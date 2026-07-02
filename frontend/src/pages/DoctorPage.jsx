@@ -151,6 +151,7 @@ function PatientPanel({ data, onNotesUpdate }) {
   const [tab, setTab] = useState("summary");
 
   const { log, summary, notes } = data;
+  const hasInteractions = (summary?.structured?.interactions || []).length > 0;
 
   return (
     <div className="patient-panel">
@@ -173,6 +174,12 @@ function PatientPanel({ data, onNotesUpdate }) {
             <span className="stat-num">{log.prescriptions?.length ?? 0}</span>
             <span className="stat-label">Visits</span>
           </div>
+          {hasInteractions && (
+            <div className="stat-pill stat-pill-warn">
+              <span className="stat-num">⚠</span>
+              <span className="stat-label">Interactions</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -212,6 +219,21 @@ function SummaryTab({ summary }) {
 
   return (
     <div className="summary-tab">
+      {s?.interactions?.length > 0 && (
+        <div className="interactions-alert-block card">
+          <div className="interactions-alert-title">
+            ⚠ Drug Interaction{s.interactions.length > 1 ? "s" : ""} Detected
+          </div>
+          {s.interactions.map((ix, i) => (
+            <div key={i} className={`interaction-item severity-${ix.severity}`}>
+              <div className="interaction-meds">{(ix.medicines || []).join(" + ")}</div>
+              <div className={`interaction-severity-badge severity-badge-${ix.severity}`}>{ix.severity}</div>
+              <p className="interaction-desc">{ix.description}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Clinical notes */}
       {s?.clinical_notes && (
         <div className="summary-section card">

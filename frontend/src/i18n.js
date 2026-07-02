@@ -52,6 +52,8 @@ const translations = {
     historyFrom: "From",
     historyTo: "To",
     historyClear: "✕ Clear",
+    interactionPatientTitle: "Potential Drug Interactions Detected",
+    interactionPatientSubtitle: "Please review these warnings and consult your doctor before changing medicines.",
 
     // Notifications
     notifTitle: "Notifications & Alerts",
@@ -69,6 +71,7 @@ const translations = {
     auditEmpty: "No access events recorded yet.",
     auditViewLog: "Viewed your medicine history",
     auditViewSummary: "Viewed your AI summary",
+    auditViewInteractions: "Viewed your interaction safety report",
 
     // Settings
     settingsTitle: "Settings",
@@ -136,6 +139,8 @@ const translations = {
     historyFrom: "से",
     historyTo: "तक",
     historyClear: "✕ साफ करें",
+    interactionPatientTitle: "संभावित दवा परस्पर क्रियाएं मिलीं",
+    interactionPatientSubtitle: "इन चेतावनियों की समीक्षा करें और दवाओं में बदलाव से पहले अपने डॉक्टर से सलाह लें।",
 
     // Notifications
     notifTitle: "सूचनाएं और अलर्ट",
@@ -153,6 +158,7 @@ const translations = {
     auditEmpty: "अभी तक कोई एक्सेस घटना दर्ज नहीं।",
     auditViewLog: "आपका दवाई इतिहास देखा",
     auditViewSummary: "आपका AI सारांश देखा",
+    auditViewInteractions: "आपकी इंटरैक्शन सुरक्षा रिपोर्ट देखी",
 
     // Settings
     settingsTitle: "सेटिंग्स",

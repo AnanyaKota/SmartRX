@@ -86,6 +86,7 @@ export default function PatientPage() {
   const [lang, setLangState] = useState(getLang());
   const [active, setActive] = useState("upload");
   const [log, setLog] = useState(null);
+  const [interactionReport, setInteractionReport] = useState(null);
   const [loadErr, setLoadErr] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -113,11 +114,16 @@ export default function PatientPage() {
     setLoadErr("");
     setLoading(true);
     try {
-      const data = await api.patientLog(user.phone);
+      const [data, report] = await Promise.all([
+        api.patientLog(user.phone),
+        api.interactionReport(user.phone).catch(() => null),
+      ]);
       setLog(data);
+      setInteractionReport(report);
     } catch (err) {
       if (/no records/i.test(err.message)) {
         setLog({ phone: user.phone, name: user.name, prescriptions: [] });
+        setInteractionReport(null);
       } else {
         setLoadErr(err.message);
       }
@@ -274,7 +280,12 @@ export default function PatientPage() {
           />
         )}
         {active === "history" && (
-          <HistoryPanel prescriptions={log?.prescriptions ?? []} loadErr={loadErr} loading={loading} />
+          <HistoryPanel
+            prescriptions={log?.prescriptions ?? []}
+            interactionReport={interactionReport}
+            loadErr={loadErr}
+            loading={loading}
+          />
         )}
         {active === "notifications" && (
           <NotificationsPanel prescriptions={log?.prescriptions ?? []} />
@@ -588,7 +599,7 @@ function NotificationsPanel({ prescriptions }) {
 }
 
 // ── History Panel ─────────────────────────────────────────────────────────────
-function HistoryPanel({ prescriptions, loadErr, loading }) {
+function HistoryPanel({ prescriptions, interactionReport, loadErr, loading }) {
   const [search, setSearch] = useState("");
   const [filterDoctor, setFilterDoctor] = useState("");
   const [filterHospital, setFilterHospital] = useState("");
@@ -622,6 +633,22 @@ function HistoryPanel({ prescriptions, loadErr, loading }) {
         <h1 className="dash-title">{t("historyTitle")}</h1>
         <p className="dash-subtitle">{prescriptions.length} consultation{prescriptions.length !== 1 ? "s" : ""} on record.</p>
       </div>
+
+      {interactionReport?.interactions?.length > 0 && (
+        <div className="interactions-alert-block card" style={{ marginBottom: 14 }}>
+          <div className="interactions-alert-title">⚠ {t("interactionPatientTitle")}</div>
+          <p className="muted small" style={{ margin: "0 0 6px" }}>
+            {t("interactionPatientSubtitle")}
+          </p>
+          {interactionReport.interactions.map((ix, i) => (
+            <div key={i} className={`interaction-item severity-${ix.severity}`}>
+              <div className="interaction-meds">{(ix.medicines || []).join(" + ")}</div>
+              <div className={`interaction-severity-badge severity-badge-${ix.severity}`}>{ix.severity}</div>
+              <p className="interaction-desc">{ix.description}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {prescriptions.length > 0 && (
         <div className="filter-bar card">
@@ -710,6 +737,7 @@ function AuditPanel() {
   function actionLabel(action) {
     if (action === "view_log")     return t("auditViewLog");
     if (action === "view_summary") return t("auditViewSummary");
+    if (action === "view_interactions") return t("auditViewInteractions");
     return action;
   }
 

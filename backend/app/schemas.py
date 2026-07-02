@@ -106,12 +106,19 @@ class StructuredCondition(BaseModel):
     onset: Optional[str] = None
     status: str = "unknown"  # "stable" | "improving" | "worsening" | "unknown"
 
+class DrugInteraction(BaseModel):
+    medicines: list[str]
+    severity: str = "moderate"  # "mild" | "moderate" | "severe"
+    description: str = ""
+    sources: list[str] = []
+    confidence: Optional[float] = None
 
 class StructuredSummary(BaseModel):
     clinical_notes: str
     current_medicines: list[StructuredMed] = []
     conditions: list[StructuredCondition] = []
     allergies: list[str] = []
+    interactions: list[DrugInteraction] = []
     last_consultation: Optional[str] = None
     trend: str = "insufficient_data"  # "stable" | "improving" | "worsening" | "insufficient_data"
 
@@ -122,6 +129,14 @@ class SummaryOut(BaseModel):
     summary: str
     structured: Optional[StructuredSummary] = None
     medicine_count: int
+    generated_at: Optional[dt.datetime] = None
+
+class InteractionReportOut(BaseModel):
+    phone: str
+    name: str
+    medicines_analyzed: list[str] = []
+    interactions: list[DrugInteraction] = []
+    signal_counts: dict[str, int] = {}
     generated_at: Optional[dt.datetime] = None
 
 

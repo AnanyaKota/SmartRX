@@ -20,6 +20,10 @@ class Settings:
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
+    # Interaction analysis
+    interaction_api_base_url: str = os.getenv("INTERACTION_API_BASE_URL", "https://api.fda.gov")
+    interaction_http_timeout_sec: float = float(os.getenv("INTERACTION_HTTP_TIMEOUT_SEC", "8"))
+
     # Uploads
     upload_dir: str = os.getenv("UPLOAD_DIR", "./uploads")
     max_upload_bytes: int = int(os.getenv("MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))  # 10MB

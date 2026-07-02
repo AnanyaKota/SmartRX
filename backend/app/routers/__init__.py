@@ -5,4 +5,5 @@ from . import (
     notes_router,
     settings_router,
     audit_router,
+    interactions_router,
 )

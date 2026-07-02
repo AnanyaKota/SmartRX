@@ -14,6 +14,7 @@ from .routers import (
     notes_router,
     settings_router,
     audit_router,
+    interactions_router,
 )
 
 settings = get_settings()
@@ -36,6 +37,7 @@ app.include_router(summary_router.router)
 app.include_router(notes_router.router)
 app.include_router(settings_router.router)
 app.include_router(audit_router.router)
+app.include_router(interactions_router.router)
 
 os.makedirs(settings.upload_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")

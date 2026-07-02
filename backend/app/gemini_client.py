@@ -108,6 +108,40 @@ Prescription data (JSON):
 {data}"""
 
 
+_INTERACTION_REASONING_PROMPT = """You are a medication safety assistant.
+Given:
+- Patient name
+- A list of current medicines
+- Prescription history
+- Signals from external interaction APIs and association-rule mining
+
+Return ONLY valid JSON with this exact shape:
+{{
+    "interactions": [
+        {{
+            "medicines": ["medicine A", "medicine B"],
+            "severity": "mild|moderate|severe",
+            "description": "human-readable clinical explanation",
+            "sources": ["gemini", "api", "apriori"],
+            "confidence": 0.0
+        }}
+    ]
+}}
+
+Rules:
+- Only include interactions that are clinically plausible and supported by provided signals.
+- If no credible interaction exists, return interactions as an empty list.
+- Never fabricate medicines not present in the provided medicine list.
+- confidence must be between 0 and 1.
+
+Patient name: {name}
+Medicines: {medicines}
+Prescription data: {prescriptions}
+API interaction signals: {api_signals}
+Apriori association signals: {association_signals}
+"""
+
+
 def generate_structured_summary(name: str, prescriptions: list[dict]) -> dict:
     """Return a structured summary dict. Falls back to stub if no API key."""
     client = _get_client()
@@ -149,6 +183,70 @@ def generate_summary(name: str, prescriptions: list[dict]) -> str:
     """Plain-text summary fallback (kept for backward compat)."""
     structured = generate_structured_summary(name, prescriptions)
     return structured.get("clinical_notes", "")
+
+
+def reason_drug_interactions(
+    name: str,
+    medicine_names: list[str],
+    prescriptions: list[dict],
+    api_signals: list[dict],
+    association_signals: list[dict],
+) -> list[dict]:
+    """Use Gemini to reason over interaction candidates and return typed dicts."""
+    client = _get_client()
+    if client is None:
+        return []
+
+    prompt = _INTERACTION_REASONING_PROMPT.format(
+        name=name,
+        medicines=json.dumps(medicine_names, ensure_ascii=False),
+        prescriptions=json.dumps(prescriptions, default=str),
+        api_signals=json.dumps(api_signals, default=str),
+        association_signals=json.dumps(association_signals, default=str),
+    )
+
+    resp = client.models.generate_content(
+        model=settings.gemini_model,
+        contents=prompt,
+        config=None,
+    )
+
+    raw = _extract_json(getattr(resp, "text", "") or "")
+    interactions: list[dict] = []
+    for item in raw.get("interactions") or []:
+        if not isinstance(item, dict):
+            continue
+
+        meds = [str(m).strip() for m in (item.get("medicines") or []) if str(m).strip()]
+        if len(meds) < 2:
+            continue
+
+        severity = str(item.get("severity") or "moderate").lower()
+        if severity not in {"mild", "moderate", "severe"}:
+            severity = "moderate"
+
+        confidence = item.get("confidence")
+        if not isinstance(confidence, (int, float)):
+            confidence = None
+        elif confidence < 0:
+            confidence = 0.0
+        elif confidence > 1:
+            confidence = 1.0
+
+        sources = [str(s).strip().lower() for s in (item.get("sources") or []) if str(s).strip()]
+        sources = list(dict.fromkeys(["gemini"] + sources))
+
+        interactions.append(
+            {
+                "medicines": meds,
+                "severity": severity,
+                "description": str(item.get("description") or "").strip(),
+                "sources": sources,
+                "confidence": confidence,
+            }
+        )
+
+    return interactions
 
 
 _STUB_EXTRACTION = {

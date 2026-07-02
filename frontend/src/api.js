@@ -83,6 +83,11 @@ export const api = {
       headers: { ...authHeaders() },
     }).then(handle),
 
+  interactionReport: (phone) =>
+    fetch(`${BASE}/interactions/${encodeURIComponent(phone)}`, {
+      headers: { ...authHeaders() },
+    }).then(handle),
+
   // ---- notes ----
   addNote: (phone, note) =>
     fetch(`${BASE}/patient/${encodeURIComponent(phone)}/notes`, {

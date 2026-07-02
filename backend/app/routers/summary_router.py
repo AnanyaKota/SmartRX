@@ -9,9 +9,10 @@ from ..auth import require_role
 from ..database import get_db
 from ..models import User, AccessLog
 from ..schemas import (
-    SummaryOut, StructuredSummary, StructuredMed, StructuredCondition,
+    SummaryOut, StructuredSummary, StructuredMed, StructuredCondition, DrugInteraction,
 )
 from ..gemini_client import generate_structured_summary
+from ..interaction_engine import build_interaction_report
 
 router = APIRouter(tags=["summary"])
 
@@ -38,11 +39,23 @@ def _parse_structured(raw: dict) -> StructuredSummary:
                 status=c.get("status", "unknown"),
             ))
 
+    interactions = []
+    for ix in raw.get("interactions") or []:
+        if isinstance(ix, dict):
+            interactions.append(DrugInteraction(
+                medicines=ix.get("medicines") or [],
+                severity=ix.get("severity") or "moderate",
+                description=ix.get("description") or "",
+                sources=ix.get("sources") or [],
+                confidence=ix.get("confidence"),
+            ))
+
     return StructuredSummary(
         clinical_notes=raw.get("clinical_notes") or "",
         current_medicines=meds,
         conditions=conditions,
         allergies=raw.get("allergies") or [],
+        interactions=interactions,
         last_consultation=raw.get("last_consultation"),
         trend=raw.get("trend") or "insufficient_data",
     )
@@ -94,6 +107,12 @@ def patient_summary(
         structured = _parse_structured(raw)
     except (ValidationError, Exception):
         structured = StructuredSummary(clinical_notes=str(raw))
+
+    report = build_interaction_report(patient.name, prescriptions, db)
+    structured.interactions = [
+        DrugInteraction(**item)
+        for item in report.get("interactions") or []
+    ]
 
     return SummaryOut(
         phone=patient.phone,
