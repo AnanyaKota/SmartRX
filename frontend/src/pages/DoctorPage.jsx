@@ -1,10 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { api, getUser } from "../api.js";
+import NavGlyph from "../components/NavGlyph.jsx";
+import BodyMap from "../components/BodyMap.jsx";
+import { analyzeHealth } from "../lib/medicalMapping.js";
 
 const DOCTOR_NAV = [
-  { id: "search",   label: "Patient Search",  icon: "🔍" },
-  { id: "recents",  label: "Recent Patients", icon: "👥" },
-  { id: "settings", label: "Settings",        icon: "⚙️" },
+  { id: "search",   label: "Patient Search",  icon: "search" },
+  { id: "recents",  label: "Recent Patients", icon: "users" },
+  { id: "settings", label: "Settings",        icon: "sliders" },
 ];
 
 // ── Main Page ────────────────────────────────────────────────────────────────
@@ -52,7 +55,7 @@ export default function DoctorPage() {
               className={`nav-item${active === item.id ? " active" : ""}`}
               onClick={() => setActive(item.id)}
             >
-              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-icon"><NavGlyph name={item.icon} /></span>
               <span className="nav-label">{item.label}</span>
             </button>
           ))}
@@ -118,7 +121,7 @@ function SearchPanel({ onPatientLoaded, currentPatient }) {
   }
 
   return (
-    <div className="dash-panel">
+    <div className="dash-panel dash-panel-wide">
       <div className="dash-header">
         <h1 className="dash-title">Patient Lookup</h1>
         <p className="dash-subtitle">Enter a patient's phone number to load their complete history and AI summary.</p>
@@ -187,6 +190,7 @@ function PatientPanel({ data, onNotesUpdate }) {
       <div className="patient-tabs">
         {[
           { id: "summary", label: "Summary" },
+          { id: "body",    label: "Body Map" },
           { id: "history", label: `History (${log.prescriptions?.length ?? 0})` },
           { id: "notes",   label: `Notes (${notes?.length ?? 0})` },
         ].map(t => (
@@ -197,8 +201,33 @@ function PatientPanel({ data, onNotesUpdate }) {
       </div>
 
       {tab === "summary" && <SummaryTab summary={summary} />}
+      {tab === "body"    && <BodyTab log={log} summary={summary} />}
       {tab === "history" && <HistoryTab prescriptions={log.prescriptions || []} />}
       {tab === "notes"   && <NotesTab phone={log.phone} notes={notes} onNotesUpdate={onNotesUpdate} />}
+    </div>
+  );
+}
+
+// ── Body Map Tab ──────────────────────────────────────────────────────────────
+function BodyTab({ log, summary }) {
+  const structured = summary?.structured || null;
+  const { findings, meta } = useMemo(
+    () =>
+      analyzeHealth({
+        prescriptions: log.prescriptions || [],
+        structured,
+        interactions: structured?.interactions || [],
+      }),
+    [log, structured]
+  );
+
+  return (
+    <div className="summary-tab">
+      <BodyMap
+        findings={findings}
+        meta={meta}
+        subtitle={`${log.name} · AI-assisted region mapping`}
+      />
     </div>
   );
 }

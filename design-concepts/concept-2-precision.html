@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>smartRX — The operating system for your prescriptions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f2f1ee;
+  --bg2:#e9e8e4;
+  --card:#ffffff;
+  --ink:#161513;
+  --muted:#77746c;
+  --accent:#ff4d2e;
+  --accent-soft:#ffe6e0;
+  --green:#1a9d63;
+  --amber:#e8960c;
+  --line:#dedcd6;
+  --ease:cubic-bezier(.22,1,.36,1);
+  --radius:22px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--ink);overflow-x:hidden}
+::selection{background:var(--accent);color:#fff}
+.mono{font-family:'JetBrains Mono',monospace}
+
+/* grain overlay for texture */
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:999;opacity:.035;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ─── Nav ─── */
+nav{
+  position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:100;
+  display:flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.72);backdrop-filter:blur(18px);
+  border:1px solid var(--line);border-radius:60px;padding:8px 10px 8px 22px;
+  box-shadow:0 8px 32px rgba(22,21,19,.08);
+  transition:box-shadow .3s;
+}
+nav .logo{font-weight:800;font-size:1.05rem;letter-spacing:-.02em;margin-right:18px;text-decoration:none;color:var(--ink);display:flex;align-items:center;gap:8px}
+nav .logo .pulse{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,77,46,.5)}70%{box-shadow:0 0 0 9px rgba(255,77,46,0)}100%{box-shadow:0 0 0 0 rgba(255,77,46,0)}}
+nav a.link{color:var(--muted);text-decoration:none;font-size:.86rem;font-weight:500;padding:8px 14px;border-radius:30px;transition:all .25s}
+nav a.link:hover{color:var(--ink);background:var(--bg2)}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:#fff;
+  padding:11px 22px;border-radius:40px;text-decoration:none;font-weight:600;font-size:.88rem;
+  border:none;cursor:pointer;position:relative;overflow:hidden;
+  transition:transform .3s var(--ease),box-shadow .3s;
+}
+.btn:hover{transform:scale(1.04);box-shadow:0 10px 26px rgba(22,21,19,.25)}
+.btn .arr{transition:transform .3s var(--ease)}
+.btn:hover .arr{transform:translateX(4px)}
+.btn.accent{background:var(--accent)}
+.btn.outline{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn.outline:hover{border-color:var(--ink);box-shadow:none}
+
+/* ─── Hero ─── */
+.hero{
+  min-height:100vh;display:grid;grid-template-columns:1fr 1fr;align-items:center;
+  gap:60px;padding:140px 7vw 80px;position:relative;
+}
+.hero-copy .eyebrow{
+  display:inline-flex;align-items:center;gap:10px;font-size:.78rem;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+  border:1px solid var(--line);background:var(--card);padding:8px 16px;border-radius:30px;
+  margin-bottom:30px;
+}
+.eyebrow .live{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+h1{
+  font-size:clamp(2.8rem,5.2vw,4.6rem);font-weight:800;letter-spacing:-.045em;line-height:1.03;
+  margin-bottom:28px;
+}
+h1 .thin{font-weight:300;font-style:italic}
+h1 .hl{
+  color:var(--accent);position:relative;white-space:nowrap;
+}
+h1 .hl svg{position:absolute;left:0;bottom:-8px;width:100%;height:14px;overflow:visible}
+h1 .hl svg path{
+  fill:none;stroke:var(--accent);stroke-width:3.5;stroke-linecap:round;
+  stroke-dasharray:400;stroke-dashoffset:400;animation:draw 1.2s var(--ease) 1s forwards;
+}
+@keyframes draw{to{stroke-dashoffset:0}}
+.hero-copy p.sub{font-size:1.06rem;color:var(--muted);line-height:1.7;max-width:480px;margin-bottom:38px;font-weight:400}
+.hero-ctas{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.hero-ctas .btn{padding:15px 30px;font-size:.95rem}
+.hero-meta{display:flex;gap:36px;margin-top:56px}
+.hm .v{font-size:1.7rem;font-weight:800;letter-spacing:-.03em}
+.hm .v em{color:var(--accent);font-style:normal}
+.hm .k{font-size:.78rem;color:var(--muted);margin-top:2px}
+
+/* staggered entrance */
+.rise{opacity:0;transform:translateY(30px);animation:rise .9s var(--ease) forwards}
+@keyframes rise{to{opacity:1;transform:translateY(0)}}
+
+/* ─── Hero dashboard mock ─── */
+.hero-visual{position:relative;perspective:1400px}
+.dash{
+  background:var(--card);border-radius:26px;border:1px solid var(--line);
+  box-shadow:0 40px 90px rgba(22,21,19,.14);padding:26px;
+  transform-style:preserve-3d;transition:transform .2s ease-out;
+  will-change:transform;
+}
+.dash-head{display:flex;align-items:center;gap:12px;padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:20px}
+.dash-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#ff8a3c);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700}
+.dash-head .n{font-weight:700;font-size:.95rem}
+.dash-head .s{font-size:.75rem;color:var(--muted)}
+.dash-head .badge{
+  margin-left:auto;font-size:.7rem;font-weight:600;color:var(--green);
+  background:#e6f5ee;padding:5px 12px;border-radius:20px;
+}
+.dash-grid{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center}
+.ring-wrap{position:relative;width:150px;height:150px}
+.ring-wrap svg{transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:var(--bg2);stroke-width:11}
+.ring-fg{
+  fill:none;stroke:var(--accent);stroke-width:11;stroke-linecap:round;
+  stroke-dasharray:396;stroke-dashoffset:396;
+  transition:stroke-dashoffset 1.8s var(--ease);
+}
+.ring-label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-label .pct{font-size:1.9rem;font-weight:800;letter-spacing:-.03em}
+.ring-label .cap{font-size:.66rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+.med-list{display:flex;flex-direction:column;gap:9px}
+.med-item{
+  display:flex;align-items:center;gap:11px;background:var(--bg);border-radius:14px;
+  padding:10px 14px;opacity:0;transform:translateX(20px);
+  transition:opacity .6s var(--ease),transform .6s var(--ease);
+}
+.med-item.show{opacity:1;transform:translateX(0)}
+.med-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.med-item .mn{font-weight:600;font-size:.84rem}
+.med-item .md{font-size:.72rem;color:var(--muted);margin-left:auto}
+.dash-alert{
+  margin-top:20px;background:var(--accent-soft);border:1px solid #ffc4b6;border-radius:16px;
+  padding:13px 16px;display:flex;gap:11px;align-items:center;
+  animation:alertPulse 2.4s infinite;
+}
+@keyframes alertPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,77,46,.28)}50%{box-shadow:0 0 0 7px rgba(255,77,46,0)}}
+.dash-alert .ic{
+  width:32px;height:32px;border-radius:10px;background:var(--accent);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;
+}
+.dash-alert .t{font-weight:700;font-size:.82rem;color:#a52a12}
+.dash-alert .d{font-size:.73rem;color:#8a5348}
+
+/* floating chips */
+.chip{
+  position:absolute;background:var(--card);border:1px solid var(--line);border-radius:16px;
+  padding:12px 18px;box-shadow:0 16px 40px rgba(22,21,19,.12);font-size:.8rem;font-weight:600;
+  display:flex;align-items:center;gap:10px;animation:chipFloat 5.5s ease-in-out infinite alternate;
+}
+.chip .ci{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.8rem;color:#fff}
+@keyframes chipFloat{from{transform:translateY(0)}to{transform:translateY(-14px)}}
+.chip1{top:-24px;left:-34px;animation-delay:.4s}
+.chip2{bottom:36px;right:-30px}
+.chip3{top:44%;left:-58px;animation-delay:.9s}
+
+/* ─── Trusted strip ─── */
+.strip{
+  padding:26px 7vw;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:40px;overflow:hidden;background:var(--card);
+}
+.strip .cap{font-size:.74rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-weight:600;white-space:nowrap}
+.tick-wrap{overflow:hidden;flex:1;mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.tick{display:flex;gap:60px;width:max-content;animation:tick 24s linear infinite}
+.tick span{font-weight:700;font-size:.98rem;color:#b9b6ae;white-space:nowrap;letter-spacing:-.01em}
+@keyframes tick{to{transform:translateX(-50%)}}
+
+/* ─── Sections ─── */
+section{padding:130px 7vw;position:relative}
+.kicker{font-size:.76rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:16px}
+h2{font-size:clamp(2rem,3.8vw,3.2rem);font-weight:800;letter-spacing:-.04em;line-height:1.08}
+.reveal{opacity:0;transform:translateY(40px);transition:opacity .9s var(--ease),transform .9s var(--ease)}
+.reveal.in{opacity:1;transform:translateY(0)}
+
+/* ─── Bento ─── */
+.bento-head{max-width:640px;margin-bottom:64px}
+.bento-head p{color:var(--muted);font-size:1.02rem;line-height:1.7;margin-top:18px}
+.bento{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:280px;gap:20px}
+.bcard{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:32px;position:relative;overflow:hidden;
+  transition:transform .35s var(--ease),box-shadow .35s var(--ease),border-color .35s;
+}
+.bcard:hover{transform:translateY(-6px);box-shadow:0 24px 60px rgba(22,21,19,.12);border-color:#c9c6be}
+.bcard h3{font-size:1.15rem;font-weight:700;letter-spacing:-.02em;margin-bottom:10px}
+.bcard p{font-size:.88rem;color:var(--muted);line-height:1.6}
+.bcard .bnum{font-family:'JetBrains Mono';font-size:.72rem;color:var(--muted);position:absolute;top:24px;right:26px}
+.bcard.wide{grid-column:span 2}
+.bcard.dark{background:var(--ink);border-color:var(--ink)}
+.bcard.dark h3{color:#fff}
+.bcard.dark p{color:#a3a09a}
+/* scan visual inside bento */
+.b-scan{position:absolute;bottom:-10px;right:20px;width:180px;height:130px;background:var(--bg);border:1px solid var(--line);border-radius:14px 14px 0 0;overflow:hidden;padding:14px}
+.b-scan .l{height:8px;border-radius:4px;background:var(--bg2);margin-bottom:8px}
+.b-scan .l.short{width:60%}
+.b-scan::after{
+  content:"";position:absolute;left:0;right:0;height:34px;top:-34px;
+  background:linear-gradient(180deg,transparent,rgba(255,77,46,.22));
+  border-bottom:2px solid var(--accent);
+  animation:bscan 2.6s ease-in-out infinite;
+}
+@keyframes bscan{0%{top:-34px}55%{top:120px}100%{top:120px}}
+/* severity bars */
+.sev{display:flex;flex-direction:column;gap:10px;margin-top:22px}
+.sev-row{display:flex;align-items:center;gap:12px;font-size:.76rem;font-weight:600}
+.sev-row .sl{width:64px;color:var(--muted)}
+.sev-bar{height:9px;border-radius:5px;flex:1;background:var(--bg2);overflow:hidden}
+.sev-bar i{display:block;height:100%;border-radius:5px;width:0;transition:width 1.4s var(--ease)}
+.in .sev-bar.mild i{width:32%;background:var(--amber)}
+.in .sev-bar.mod i{width:58%;background:#f4762c;transition-delay:.15s}
+.in .sev-bar.sev i{width:86%;background:var(--accent);transition-delay:.3s}
+/* audit rows */
+.audit-mini{margin-top:20px;display:flex;flex-direction:column;gap:8px}
+.arow{
+  display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono';font-size:.68rem;
+  background:rgba(255,255,255,.06);border-radius:10px;padding:9px 12px;color:#c9c6be;
+  opacity:0;transform:translateX(16px);transition:all .6s var(--ease);
+}
+.in .arow{opacity:1;transform:translateX(0)}
+.in .arow:nth-child(2){transition-delay:.15s}
+.in .arow:nth-child(3){transition-delay:.3s}
+.arow .adot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0}
+/* lang toggle visual */
+.lang-flip{margin-top:26px;font-size:1.5rem;font-weight:800;letter-spacing:-.02em;height:2em;overflow:hidden}
+.lang-flip .inner{display:flex;flex-direction:column;animation:langflip 5s var(--ease) infinite}
+.lang-flip .inner span{height:2em;line-height:2em}
+@keyframes langflip{0%,40%{transform:translateY(0)}50%,90%{transform:translateY(-2em)}100%{transform:translateY(0)}}
+
+/* ─── Sticky how-it-works ─── */
+.how{background:var(--ink);color:#fff;border-radius:44px;margin:0 20px}
+.how .kicker{color:#ff8a70}
+.how-grid{display:grid;grid-template-columns:1fr 1.2fr;gap:80px;margin-top:20px}
+.how-left{position:sticky;top:120px;align-self:start}
+.how-left p{color:#a3a09a;line-height:1.7;margin-top:20px;max-width:400px}
+.hstep{
+  border-top:1px solid #33312d;padding:44px 0;display:grid;
+  grid-template-columns:90px 1fr;gap:26px;opacity:.28;transform:translateX(20px);
+  transition:opacity .6s var(--ease),transform .6s var(--ease);
+}
+.hstep.active{opacity:1;transform:translateX(0)}
+.hstep .sn{
+  font-family:'JetBrains Mono';font-size:.85rem;color:#77746c;
+  width:56px;height:56px;border:1px solid #33312d;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;transition:all .5s var(--ease);
+}
+.hstep.active .sn{background:var(--accent);border-color:var(--accent);color:#fff;transform:rotate(360deg)}
+.hstep h3{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin-bottom:12px}
+.hstep p{color:#a3a09a;line-height:1.65;font-size:.95rem}
+
+/* ─── Stats ─── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center}
+.stat{padding:44px 20px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);transition:all .35s var(--ease)}
+.stat:hover{background:var(--ink);color:#fff;transform:translateY(-6px)}
+.stat:hover .sk{color:#a3a09a}
+.stat .sv{font-size:2.8rem;font-weight:800;letter-spacing:-.04em}
+.stat .sv em{color:var(--accent);font-style:normal}
+.stat .sk{font-size:.82rem;color:var(--muted);margin-top:6px;transition:color .3s}
+
+/* ─── CTA ─── */
+.cta{text-align:center;padding:150px 7vw}
+.cta h2{font-size:clamp(2.4rem,5.4vw,4.4rem);margin-bottom:20px}
+.cta p{color:var(--muted);font-size:1.05rem;margin-bottom:44px}
+.cta .btn{padding:18px 44px;font-size:1rem}
+.cta .note{font-size:.78rem;color:var(--muted);margin-top:18px}
+
+footer{
+  border-top:1px solid var(--line);padding:34px 7vw;display:flex;
+  justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;background:var(--card);
+}
+footer .fl{font-weight:800;font-size:1rem}
+footer p{font-size:.8rem;color:var(--muted)}
+footer .fx{display:flex;gap:24px}
+footer .fx a{font-size:.8rem;color:var(--muted);text-decoration:none;transition:color .2s}
+footer .fx a:hover{color:var(--accent)}
+
+@media(max-width:960px){
+  .hero{grid-template-columns:1fr;padding:130px 6vw 60px}
+  nav a.link{display:none}
+  .bento{grid-template-columns:1fr;grid-auto-rows:auto}
+  .bcard.wide{grid-column:span 1}
+  .bcard{min-height:240px}
+  .how-grid{grid-template-columns:1fr;gap:30px}
+  .how-left{position:static}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .chip3{display:none}
+  section{padding:90px 6vw}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="#"><span class="pulse"></span>smartRX</a>
+  <a class="link" href="#platform">Platform</a>
+  <a class="link" href="#how">How it works</a>
+  <a class="link" href="#numbers">Why us</a>
+  <a class="btn" href="#">Sign up <span class="arr">→</span></a>
+</nav>
+
+<header class="hero">
+  <div class="hero-copy">
+    <span class="eyebrow rise" style="animation-delay:.1s"><span class="live"></span>AI reads your prescriptions</span>
+    <h1>
+      <span class="rise" style="animation-delay:.2s;display:block">The operating</span>
+      <span class="rise" style="animation-delay:.32s;display:block">system for your</span>
+      <span class="rise" style="animation-delay:.44s;display:block"><span class="hl">prescriptions<svg viewBox="0 0 300 14" preserveAspectRatio="none"><path d="M2 10 Q75 2 150 8 T298 6"/></svg></span></span>
+    </h1>
+    <p class="sub rise" style="animation-delay:.58s">Photograph any script. AI extracts every medicine, dose, and instruction — then keeps watch for drug interactions across your entire history. Doctors get the full picture from one phone number.</p>
+    <div class="hero-ctas rise" style="animation-delay:.7s">
+      <a href="#" class="btn accent">Start free <span class="arr">→</span></a>
+      <a href="#how" class="btn outline">See how it works</a>
+    </div>
+    <div class="hero-meta rise" style="animation-delay:.82s">
+      <div class="hm"><div class="v"><span class="count" data-target="98">0</span><em>%</em></div><div class="k">extraction accuracy</div></div>
+      <div class="hm"><div class="v"><span class="count" data-target="9">0</span><em>s</em></div><div class="k">photo → filed record</div></div>
+      <div class="hm"><div class="v"><span class="count" data-target="3">0</span><em>lvl</em></div><div class="k">interaction severity</div></div>
+    </div>
+  </div>
+
+  <div class="hero-visual rise" style="animation-delay:.5s">
+    <div class="dash" id="dash">
+      <div class="dash-head">
+        <div class="dash-avatar">AR</div>
+        <div><div class="n">Anita Rao</div><div class="s">Patient · 6 prescriptions on file</div></div>
+        <span class="badge">↗ Improving</span>
+      </div>
+      <div class="dash-grid">
+        <div class="ring-wrap">
+          <svg width="150" height="150" viewBox="0 0 150 150">
+            <circle class="ring-bg" cx="75" cy="75" r="63"/>
+            <circle class="ring-fg" id="ring" cx="75" cy="75" r="63"/>
+          </svg>
+          <div class="ring-label">
+            <span class="pct"><span id="ringPct">0</span>%</span>
+            <span class="cap">Adherence</span>
+          </div>
+        </div>
+        <div class="med-list" id="medList">
+          <div class="med-item"><span class="med-dot" style="background:var(--accent)"></span><span class="mn">Metformin 500mg</span><span class="md">1-0-1</span></div>
+          <div class="med-item"><span class="med-dot" style="background:var(--amber)"></span><span class="mn">Atorvastatin 10mg</span><span class="md">0-0-1</span></div>
+          <div class="med-item"><span class="med-dot" style="background:var(--green)"></span><span class="mn">Telmisartan 40mg</span><span class="md">1-0-0</span></div>
+          <div class="med-item"><span class="med-dot" style="background:#8b5cf6"></span><span class="mn">Aspirin 75mg</span><span class="md">1-0-0</span></div>
+        </div>
+      </div>
+      <div class="dash-alert">
+        <div class="ic">!</div>
+        <div>
+          <div class="t">Interaction detected — Aspirin + Telmisartan</div>
+          <div class="d">Moderate · may reduce antihypertensive effect. Flagged to doctor.</div>
+        </div>
+      </div>
+    </div>
+    <div class="chip chip1"><span class="ci" style="background:var(--green)">✓</span> Script scanned in 6.2s</div>
+    <div class="chip chip2"><span class="ci" style="background:var(--accent)">℞</span> 3 medicines extracted</div>
+    <div class="chip chip3"><span class="ci" style="background:var(--ink)">👁</span> Dr. Mehta viewed · logged</div>
+  </div>
+</header>
+
+<div class="strip">
+  <span class="cap">Built for real clinics</span>
+  <div class="tick-wrap">
+    <div class="tick" id="tickTrack">
+      <span>City Care Clinic</span><span>Sunrise Multispeciality</span><span>Apollo Health Point</span><span>Green Cross Pharmacy</span><span>LifeSpring Hospital</span><span>Medanta Associates</span>
+    </div>
+  </div>
+</div>
+
+<section id="platform">
+  <div class="bento-head reveal">
+    <span class="kicker">The platform</span>
+    <h2>Paper in. Clinical intelligence out.</h2>
+    <p>Every capability below runs automatically the moment a prescription is photographed. No data entry, no manual filing, no guessing what a patient is taking.</p>
+  </div>
+  <div class="bento">
+    <div class="bcard wide reveal">
+      <span class="bnum">01</span>
+      <h3>Vision AI extraction</h3>
+      <p style="max-width:52%">Dual-engine reading: OCR handles clean print, vision AI decodes handwriting. Doctor, hospital, date, and every medicine with dose and duration — structured in seconds. You verify before anything is saved.</p>
+      <div class="b-scan"><div class="l"></div><div class="l short"></div><div class="l"></div><div class="l short"></div><div class="l"></div></div>
+    </div>
+    <div class="bcard reveal" style="transition-delay:.1s">
+      <span class="bnum">02</span>
+      <h3>Interaction radar</h3>
+      <p>Every new medicine is checked against everything you already take.</p>
+      <div class="sev">
+        <div class="sev-row"><span class="sl">Mild</span><div class="sev-bar mild"><i></i></div></div>
+        <div class="sev-row"><span class="sl">Moderate</span><div class="sev-bar mod"><i></i></div></div>
+        <div class="sev-row"><span class="sl">Severe</span><div class="sev-bar sev"><i></i></div></div>
+      </div>
+    </div>
+    <div class="bcard dark reveal" style="transition-delay:.05s">
+      <span class="bnum" style="color:#77746c">03</span>
+      <h3>Transparent audit trail</h3>
+      <p>Every doctor access is logged — and visible to you.</p>
+      <div class="audit-mini">
+        <div class="arow"><span class="adot"></span>dr_mehta viewed summary · 2m ago</div>
+        <div class="arow"><span class="adot"></span>dr_kapoor viewed history · 1d ago</div>
+        <div class="arow"><span class="adot"></span>dr_mehta added note · 3d ago</div>
+      </div>
+    </div>
+    <div class="bcard reveal" style="transition-delay:.15s">
+      <span class="bnum">04</span>
+      <h3>Clinical summaries</h3>
+      <p>Doctors see medicines, inferred conditions, allergies, and health trend — a structured brief, not a paper pile.</p>
+    </div>
+    <div class="bcard reveal" style="transition-delay:.2s">
+      <span class="bnum">05</span>
+      <h3>Speaks your language</h3>
+      <p>Full interface in English and Hindi, with dose reminders in whichever you choose.</p>
+      <div class="lang-flip"><div class="inner"><span>Take your dose.</span><span>अपनी खुराक लें।</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="how" id="how">
+  <div class="how-grid">
+    <div class="how-left reveal">
+      <span class="kicker">How it works</span>
+      <h2>From pocket-crumpled paper to clinical record.</h2>
+      <p>Scroll through the journey of a single prescription. The whole pipeline takes less time than finding a pen.</p>
+    </div>
+    <div class="how-right">
+      <div class="hstep" data-step>
+        <span class="sn">01</span>
+        <div><h3>Snap the script</h3><p>Any prescription, any condition — folded, faded, or fresh from the clinic. Your phone camera is the only scanner you need.</p></div>
+      </div>
+      <div class="hstep" data-step>
+        <span class="sn">02</span>
+        <div><h3>AI reads &amp; you verify</h3><p>Extraction runs in seconds and shows you exactly what it read. Edit anything, confirm, done. Nothing is saved without your sign-off.</p></div>
+      </div>
+      <div class="hstep" data-step>
+        <span class="sn">03</span>
+        <div><h3>Interactions checked</h3><p>The new medicines are cross-referenced against your full history. Mild, moderate, or severe conflicts are flagged with clinical reasoning.</p></div>
+      </div>
+      <div class="hstep" data-step>
+        <span class="sn">04</span>
+        <div><h3>Your doctor sees clearly</h3><p>Any authorized doctor looks you up by phone number and gets a live clinical summary — while every access lands in your audit log.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="numbers">
+  <div class="reveal" style="text-align:center;margin-bottom:60px">
+    <span class="kicker">By the numbers</span>
+    <h2>Small app. Serious safety net.</h2>
+  </div>
+  <div class="stats">
+    <div class="stat reveal"><div class="sv"><span class="count" data-target="98">0</span><em>%</em></div><div class="sk">extraction accuracy</div></div>
+    <div class="stat reveal" style="transition-delay:.08s"><div class="sv"><span class="count" data-target="9">0</span><em>s</em></div><div class="sk">average scan time</div></div>
+    <div class="stat reveal" style="transition-delay:.16s"><div class="sv"><span class="count" data-target="100">0</span><em>%</em></div><div class="sk">of accesses audited</div></div>
+    <div class="stat reveal" style="transition-delay:.24s"><div class="sv"><span class="count" data-target="2">0</span><em></em></div><div class="sk">languages, day one</div></div>
+  </div>
+</section>
+
+<section class="cta">
+  <div class="reveal">
+    <h2>Your health history,<br>finally in one place.</h2>
+    <p>Free for patients. Two minutes to set up. Works with any prescription.</p>
+    <a href="#" class="btn accent">Create your account <span class="arr">→</span></a>
+    <div class="note">No credit card · No installs · Just your phone camera</div>
+  </div>
+</section>
+
+<footer>
+  <span class="fl">smartRX</span>
+  <p>Prescription intelligence for patients and doctors.</p>
+  <div class="fx"><a href="#">Privacy</a><a href="#">Security</a><a href="#">Contact</a></div>
+</footer>
+
+<script>
+// duplicate ticker
+const tt=document.getElementById('tickTrack');
+tt.innerHTML+=tt.innerHTML;
+
+// 3D tilt on dashboard
+const dash=document.getElementById('dash');
+const vis=document.querySelector('.hero-visual');
+vis.addEventListener('mousemove',e=>{
+  const r=vis.getBoundingClientRect();
+  const x=(e.clientX-r.left)/r.width-.5;
+  const y=(e.clientY-r.top)/r.height-.5;
+  dash.style.transform=`rotateY(${x*10}deg) rotateX(${-y*8}deg)`;
+});
+vis.addEventListener('mouseleave',()=>dash.style.transform='rotateY(0) rotateX(0)');
+
+// ring + med list animate on load
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    const ring=document.getElementById('ring');
+    const target=92, C=2*Math.PI*63;
+    ring.style.strokeDashoffset=C*(1-target/100);
+    // count up percentage
+    const el=document.getElementById('ringPct'),t0=performance.now();
+    (function tick(now){
+      const p=Math.min((now-t0)/1800,1);
+      el.textContent=Math.round(target*(1-Math.pow(1-p,3)));
+      if(p<1)requestAnimationFrame(tick);
+    })(t0);
+    // meds stagger
+    document.querySelectorAll('.med-item').forEach((m,i)=>setTimeout(()=>m.classList.add('show'),300+i*180));
+  },900);
+});
+
+// reveals
+const io=new IntersectionObserver(es=>es.forEach(e=>{
+  if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}
+}),{threshold:.2});
+document.querySelectorAll('.reveal,.bcard').forEach(el=>io.observe(el));
+
+// counters
+const cio=new IntersectionObserver(es=>es.forEach(e=>{
+  if(!e.isIntersecting)return;cio.unobserve(e.target);
+  const el=e.target,t=+el.dataset.target,t0=performance.now();
+  (function tick(now){
+    const p=Math.min((now-t0)/1400,1);
+    el.textContent=Math.round(t*(1-Math.pow(1-p,3)));
+    if(p<1)requestAnimationFrame(tick);
+  })(t0);
+}),{threshold:.6});
+document.querySelectorAll('.count').forEach(el=>cio.observe(el));
+
+// sticky steps activation
+const steps=document.querySelectorAll('[data-step]');
+const sio=new IntersectionObserver(es=>es.forEach(e=>{
+  e.target.classList.toggle('active',e.isIntersecting);
+}),{threshold:.6});
+steps.forEach(s=>sio.observe(s));
+</script>
+</body>
+</html>

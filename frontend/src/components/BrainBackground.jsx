@@ -1,20 +1,27 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 
 /**
- * BrainBackground — a clean, stylised "AI brain": a brain-shaped cloud of glowing
- * neuron nodes wired together by synapse lines, with little signal pulses firing
- * across the network. Not anatomically real — just a soft, abstract medical-AI
- * motif. Slowly turns, breathes, and tilts toward the pointer.
+ * BrainBackground — the "medical brain", ember edition.
  *
- * Pure procedural (no model download). Anchored right on wide screens (text sits
- * left), centred on narrow. Every failure path is swallowed so the page can't
- * break, and it self-cleans on unmount.
+ * A brain-shaped neural network rendered in the app's ember palette:
+ *  · glowing gold/orange neuron nodes wired by synapse lines with pulses
+ *  · a translucent fresnel "cortex" hull so the brain reads as a solid form
+ *  · UnrealBloom fuses everything into warm light
+ *  · interactive: pointer tilt/parallax, scroll dolly, click → neural burst
+ *    (a firing storm + shockwave ring from a random cortex node)
+ *
+ * Procedural (no model download). Anchored right on wide screens, centred on
+ * narrow. Failure-safe: any WebGL error just hides the layer.
  */
 
 const R = 4.2; // brain radius (world units)
 
-/* ── compact 3D simplex noise — gives the surface its organic wrinkle ── */
+/* ── compact 3D simplex noise — organic cortex wrinkle ── */
 const _grad3 = [
   [1, 1, 0], [-1, 1, 0], [1, -1, 0], [-1, -1, 0],
   [1, 0, 1], [-1, 0, 1], [1, 0, -1], [-1, 0, -1],
@@ -67,6 +74,19 @@ function simplex3(x, y, z) {
   return 32 * n;
 }
 
+/* cortex displacement shared by the node cloud and the fresnel hull */
+function cortexDisp(d) {
+  let amp = 0.5, freq = 2.4, sum = 0, norm = 0;
+  for (let o = 0; o < 3; o++) {
+    sum += amp * (1 - Math.abs(simplex3(d.x * freq, d.y * freq, d.z * freq)));
+    norm += amp; amp *= 0.5; freq *= 2.05;
+  }
+  let disp = (sum / norm - 0.5) * 0.22;
+  // central longitudinal fissure along the top
+  disp -= Math.exp(-(d.x * d.x) / 0.02) * Math.max(0, d.y) * 0.22;
+  return disp;
+}
+
 export default function BrainBackground() {
   const mountRef = useRef(null);
 
@@ -78,7 +98,7 @@ export default function BrainBackground() {
 
     let renderer;
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+      renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, powerPreference: "high-performance" });
     } catch {
       return undefined;
     }
@@ -86,13 +106,14 @@ export default function BrainBackground() {
     let width = mount.clientWidth || window.innerWidth;
     let height = mount.clientHeight || window.innerHeight;
 
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
     renderer.setSize(width, height);
-    renderer.setClearColor(0xffffff, 0);
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
     mount.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x070302); // page stage colour
+    scene.fog = new THREE.FogExp2(0x070302, 0.014);
+
     const camera = new THREE.PerspectiveCamera(44, width / height, 0.1, 100);
     camera.position.set(0, 0, 15);
 
@@ -102,53 +123,43 @@ export default function BrainBackground() {
 
     const disposables = [];
 
-    /* ── palette ── */
-    const COOL = new THREE.Color(0x2dd4bf); // teal
-    const WARM = new THREE.Color(0xfb7185); // coral
-    const NODE = new THREE.Color(0xb9a7f0); // soft lilac
+    /* ── ember palette ── */
+    const GOLD = new THREE.Color(0xffb066);
+    const EMBER = new THREE.Color(0xe85d1f);
+    const PALE = new THREE.Color(0xffd9a8);
+    const WHITEHOT = new THREE.Color(0xfff3e0);
 
-    /* ── 1. lay out neuron nodes in a brain-ish shape ──
-       Fibonacci sphere → ellipsoid → noise wrinkle → a central top fissure that
-       suggests two hemispheres. */
-    const COUNT = width < 760 ? 150 : 230;
-    const nodes = []; // THREE.Vector3[]
+    /* ── 1. neuron nodes in a brain-ish shape ── */
+    const COUNT = width < 760 ? 170 : 260;
+    const nodes = [];
     const nColor = new Float32Array(COUNT * 3);
-    const ga = 2.399963229728653; // golden angle
+    const ga = 2.399963229728653;
     const d = new THREE.Vector3();
     for (let i = 0; i < COUNT; i++) {
-      const y = 1 - (i / (COUNT - 1)) * 2;          // 1 → -1
+      const y = 1 - (i / (COUNT - 1)) * 2;
       const rad = Math.sqrt(Math.max(0, 1 - y * y));
       const theta = i * ga;
       d.set(Math.cos(theta) * rad, y, Math.sin(theta) * rad).normalize();
-
-      // organic surface wrinkle (fbm-ish), slightly inset some nodes for depth
-      let amp = 0.5, freq = 2.4, sum = 0, norm = 0;
-      for (let o = 0; o < 3; o++) {
-        sum += amp * (1 - Math.abs(simplex3(d.x * freq, d.y * freq, d.z * freq)));
-        norm += amp; amp *= 0.5; freq *= 2.05;
-      }
-      let disp = (sum / norm - 0.5) * 0.22;
-      // central longitudinal fissure along the top (x≈0 gap)
-      disp -= Math.exp(-(d.x * d.x) / 0.02) * Math.max(0, d.y) * 0.22;
-      const shell = 0.86 + Math.random() * 0.14; // a little inward scatter
+      const disp = cortexDisp(d);
+      const shell = 0.86 + Math.random() * 0.14;
       const s = R * (1 + disp) * shell;
       nodes.push(new THREE.Vector3(d.x * 1.22 * s, d.y * 0.92 * s, d.z * 1.02 * s));
 
-      // colour by hemisphere: cool on one side, warm on the other, lilac core
-      const c = NODE.clone().lerp(d.x < 0 ? COOL : WARM, Math.abs(d.x) * 0.55 + 0.1);
+      // hemisphere tint: pale gold core, gold left, ember right
+      const c = PALE.clone().lerp(d.x < 0 ? GOLD : EMBER, Math.abs(d.x) * 0.62 + 0.12);
       nColor[i * 3] = c.r; nColor[i * 3 + 1] = c.g; nColor[i * 3 + 2] = c.b;
     }
 
-    /* ── 2. wire nearby nodes into synapses (k-nearest, deduped) ── */
+    /* ── 2. synapse wiring (k-nearest, deduped) ── */
     const K = 3;
     const edgeSet = new Set();
-    const edges = []; // [aIdx, bIdx]
-    const dist2 = (p, q) => p.distanceToSquared(q);
+    const edges = [];
+    const adjacency = Array.from({ length: COUNT }, () => []);
     for (let i = 0; i < COUNT; i++) {
       const near = [];
       for (let j = 0; j < COUNT; j++) {
         if (j === i) continue;
-        near.push([dist2(nodes[i], nodes[j]), j]);
+        near.push([nodes[i].distanceToSquared(nodes[j]), j]);
       }
       near.sort((a, b) => a[0] - b[0]);
       for (let k = 0; k < K; k++) {
@@ -156,16 +167,18 @@ export default function BrainBackground() {
         const key = i < j ? i * COUNT + j : j * COUNT + i;
         if (edgeSet.has(key)) continue;
         edgeSet.add(key);
+        adjacency[i].push(edges.length);
+        adjacency[j].push(edges.length);
         edges.push([i, j]);
       }
     }
 
-    /* ── 3. synapse lines: gradient teal→coral + a pulse travelling along each ── */
+    /* ── 3. synapse lines: gold→ember gradient + travelling pulses ── */
     const EC = edges.length;
     const lPos = new Float32Array(EC * 2 * 3);
     const lCol = new Float32Array(EC * 2 * 3);
-    const lT = new Float32Array(EC * 2);    // 0 at one end, edge-length at the other
-    const lSeed = new Float32Array(EC * 2); // per-edge random phase
+    const lT = new Float32Array(EC * 2);
+    const lSeed = new Float32Array(EC * 2);
     for (let e = 0; e < EC; e++) {
       const [a, b] = edges[e];
       const pa = nodes[a], pb = nodes[b];
@@ -173,8 +186,8 @@ export default function BrainBackground() {
       const seed = Math.random();
       lPos.set([pa.x, pa.y, pa.z], e * 6);
       lPos.set([pb.x, pb.y, pb.z], e * 6 + 3);
-      lCol.set([COOL.r, COOL.g, COOL.b], e * 6);
-      lCol.set([WARM.r, WARM.g, WARM.b], e * 6 + 3);
+      lCol.set([GOLD.r, GOLD.g, GOLD.b], e * 6);
+      lCol.set([EMBER.r, EMBER.g, EMBER.b], e * 6 + 3);
       lT[e * 2] = 0; lT[e * 2 + 1] = len;
       lSeed[e * 2] = seed; lSeed[e * 2 + 1] = seed;
     }
@@ -186,7 +199,7 @@ export default function BrainBackground() {
     disposables.push(lineGeo);
 
     const lineMat = new THREE.ShaderMaterial({
-      uniforms: { uTime: { value: 0 } },
+      uniforms: { uTime: { value: 0 }, uExcite: { value: 0 } },
       vertexColors: true,
       transparent: true,
       depthWrite: false,
@@ -206,23 +219,74 @@ export default function BrainBackground() {
       `,
       fragmentShader: /* glsl */`
         uniform float uTime;
+        uniform float uExcite;
         varying vec3 vColor;
         varying float vT;
         varying float vSeed;
         void main() {
           float phase = vT * 2.4 - uTime * 1.6 + vSeed * 6.2831853;
           float pulse = pow(0.5 + 0.5 * sin(phase), 8.0);
-          vec3 col = vColor * (0.32 + 0.9 * pulse);
-          float a = 0.16 + 0.7 * pulse;
+          pulse = min(pulse * (1.0 + uExcite * 1.6), 2.0);
+          vec3 col = vColor * (0.30 + 0.95 * pulse) + vec3(1.0, 0.85, 0.6) * pulse * uExcite * 0.35;
+          float a = 0.14 + 0.68 * pulse;
           gl_FragColor = vec4(col, a);
         }
       `,
     });
     disposables.push(lineMat);
-    const lines = new THREE.LineSegments(lineGeo, lineMat);
-    group.add(lines);
+    group.add(new THREE.LineSegments(lineGeo, lineMat));
 
-    /* ── 4. glowing neuron nodes (soft round sprite) ── */
+    /* ── 4. fresnel cortex hull — the brain reads as a solid glowing form ── */
+    const hullGeo = new THREE.SphereGeometry(1, 110, 110);
+    {
+      const pos = hullGeo.attributes.position;
+      const v = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).normalize();
+        const disp = cortexDisp(v);
+        const s = R * (1 + disp) * 1.015;
+        pos.setXYZ(i, v.x * 1.22 * s, v.y * 0.92 * s, v.z * 1.02 * s);
+      }
+      hullGeo.computeVertexNormals();
+    }
+    disposables.push(hullGeo);
+    const hullMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uColor: { value: new THREE.Color(0xff8a3d) },
+        uBoost: { value: 0 },
+        uTime: { value: 0 },
+      },
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      vertexShader: /* glsl */`
+        varying vec3 vNormal;
+        varying vec3 vView;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          vView = normalize(-mv.xyz);
+          gl_Position = projectionMatrix * mv;
+        }
+      `,
+      fragmentShader: /* glsl */`
+        uniform vec3 uColor;
+        uniform float uBoost;
+        uniform float uTime;
+        varying vec3 vNormal;
+        varying vec3 vView;
+        void main() {
+          float f = pow(1.0 - abs(dot(normalize(vNormal), normalize(vView))), 2.8);
+          float breathe = 0.85 + 0.15 * sin(uTime * 0.7);
+          float k = f * (0.55 + uBoost * 0.9) * breathe;
+          gl_FragColor = vec4(uColor * k * 1.4, k * 0.5);
+        }
+      `,
+    });
+    disposables.push(hullMat);
+    group.add(new THREE.Mesh(hullGeo, hullMat));
+
+    /* ── 5. glowing neuron nodes ── */
     const makeGlow = () => {
       const c = document.createElement("canvas");
       c.width = c.height = 64;
@@ -249,21 +313,30 @@ export default function BrainBackground() {
     nodeGeo.setAttribute("color", new THREE.BufferAttribute(nColor, 3));
     disposables.push(nodeGeo);
     const nodeMat = new THREE.PointsMaterial({
-      size: 0.4, map: sprite, vertexColors: true, transparent: true,
+      size: 0.34, map: sprite, vertexColors: true, transparent: true,
       depthWrite: false, sizeAttenuation: true, opacity: 0.95, blending: THREE.AdditiveBlending,
     });
     disposables.push(nodeMat);
     group.add(new THREE.Points(nodeGeo, nodeMat));
 
-    /* ── 5. signal pulses firing across the network ── */
-    const SIG = width < 760 ? 14 : 22;
+    /* ── 6. signal pulses firing across the network ── */
+    const SIG = width < 760 ? 16 : 26;
+    const BURST_SIG = 14; // extra pool reserved for click bursts
+    const TOTAL_SIG = SIG + BURST_SIG;
     const signals = [];
-    const sPos = new Float32Array(SIG * 3);
-    const sCol = new Float32Array(SIG * 3);
+    const sPos = new Float32Array(TOTAL_SIG * 3);
+    const sCol = new Float32Array(TOTAL_SIG * 3);
     const pickEdge = () => (Math.random() * EC) | 0;
-    for (let i = 0; i < SIG; i++) {
-      signals.push({ e: pickEdge(), p: Math.random(), speed: 0.5 + Math.random() * 0.8 });
-      const c = (i % 2 ? COOL : WARM);
+    for (let i = 0; i < TOTAL_SIG; i++) {
+      const burstPool = i >= SIG;
+      signals.push({
+        e: pickEdge(),
+        p: Math.random(),
+        speed: 0.5 + Math.random() * 0.8,
+        burstPool,
+        active: !burstPool,
+      });
+      const c = burstPool ? WHITEHOT : (i % 2 ? GOLD : EMBER);
       sCol[i * 3] = c.r; sCol[i * 3 + 1] = c.g; sCol[i * 3 + 2] = c.b;
     }
     const sigGeo = new THREE.BufferGeometry();
@@ -271,16 +344,41 @@ export default function BrainBackground() {
     sigGeo.setAttribute("color", new THREE.BufferAttribute(sCol, 3));
     disposables.push(sigGeo);
     const sigMat = new THREE.PointsMaterial({
-      size: 0.7, map: sprite, vertexColors: true, transparent: true,
+      size: 0.62, map: sprite, vertexColors: true, transparent: true,
       depthWrite: false, sizeAttenuation: true, opacity: 1.0, blending: THREE.AdditiveBlending,
     });
     disposables.push(sigMat);
     group.add(new THREE.Points(sigGeo, sigMat));
 
-    const tmpA = new THREE.Vector3();
-    const tmpB = new THREE.Vector3();
+    /* ── 7. burst shockwave ring ── */
+    const ringMat = new THREE.SpriteMaterial({
+      map: sprite, color: 0xffd9a8, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    disposables.push(ringMat);
+    const ring = new THREE.Sprite(ringMat);
+    ring.scale.setScalar(0.1);
+    group.add(ring);
 
-    /* ── responsive framing: anchor brain right on wide screens ── */
+    /* ── 8. warm haze sprites behind the brain ── */
+    const hazeMat = new THREE.SpriteMaterial({
+      map: sprite, color: 0xb3491a, transparent: true, opacity: 0.10,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    disposables.push(hazeMat);
+    const haze = new THREE.Sprite(hazeMat);
+    haze.position.set(0, 0, -6);
+    haze.scale.set(26, 20, 1);
+    group.add(haze);
+
+    /* ── post-processing: bloom makes it ember ── */
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloom = new UnrealBloomPass(new THREE.Vector2(width, height), 0.75, 0.55, 0.22);
+    composer.addPass(bloom);
+    composer.addPass(new OutputPass());
+
+    /* ── responsive framing ── */
     const layout = () => {
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
@@ -289,10 +387,11 @@ export default function BrainBackground() {
       const wide = camera.aspect > 1.1;
       group.position.x = wide ? 0.24 * visW : 0;
       group.position.y = wide ? 0.04 * visH : 0;
-      group.scale.setScalar(wide ? 1 : 0.82);
+      group.userData.s0 = wide ? 1 : 0.82;
     };
     layout();
 
+    /* ── interactivity ── */
     const pointer = { x: 0, y: 0 };
     const targetP = { x: 0, y: 0 };
     const onPointerMove = (e) => {
@@ -301,10 +400,41 @@ export default function BrainBackground() {
     };
     window.addEventListener("pointermove", onPointerMove);
 
+    // scroll dolly: brain recedes + turns as the page scrolls
+    let scrollT = 0;
+    const onScroll = () => {
+      scrollT = Math.min(window.scrollY / 900, 1.6);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+
+    // click → neural burst from a random cortex node
+    const burst = { t: -10, node: 0 };
+    const onPointerDown = () => {
+      burst.t = 0;
+      burst.node = (Math.random() * COUNT) | 0;
+      // launch the reserved white-hot signals from edges around the node
+      let launched = 0;
+      const startEdges = adjacency[burst.node];
+      for (const sg of signals) {
+        if (!sg.burstPool) continue;
+        sg.active = true;
+        sg.p = 0;
+        sg.speed = 1.6 + Math.random() * 1.4;
+        sg.e = startEdges.length
+          ? startEdges[launched % startEdges.length]
+          : pickEdge();
+        launched++;
+      }
+      ring.position.copy(nodes[burst.node]);
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+
     const resize = () => {
       width = mount.clientWidth || window.innerWidth;
       height = mount.clientHeight || window.innerHeight;
       renderer.setSize(width, height);
+      composer.setSize(width, height);
       layout();
     };
     const ro = new ResizeObserver(resize);
@@ -314,23 +444,58 @@ export default function BrainBackground() {
     let frameId = 0;
     let running = true;
 
+    const tmpA = new THREE.Vector3();
+    const tmpB = new THREE.Vector3();
+
     const renderFrame = () => {
       const dt = Math.min(clock.getDelta(), 0.05);
       const t = clock.elapsedTime;
 
       lineMat.uniforms.uTime.value = t;
-      group.rotation.y = t * 0.08;
-      const breathe = 1 + Math.sin(t * 0.7) * 0.015;
-      group.scale.setScalar((group.userData.s0 ||= group.scale.x) * breathe);
+      hullMat.uniforms.uTime.value = t;
 
-      // move signal pulses along their edges; re-target on arrival
+      // burst envelope: sharp attack, ~1.4s decay
+      burst.t += dt;
+      const b = burst.t >= 0 ? Math.exp(-burst.t * 2.2) : 0;
+      lineMat.uniforms.uExcite.value = b;
+      hullMat.uniforms.uBoost.value = b * 0.9;
+      bloom.strength = 0.75 + b * 0.55;
+
+      // shockwave ring grows + fades
+      if (b > 0.01) {
+        const age = burst.t;
+        ring.scale.setScalar(0.4 + age * 9);
+        ringMat.opacity = b * 0.55;
+      } else {
+        ringMat.opacity = 0;
+      }
+
+      group.rotation.y = t * 0.08 + scrollT * 0.9;
+      const breathe = 1 + Math.sin(t * 0.7) * 0.015 + b * 0.03;
+      group.scale.setScalar((group.userData.s0 || 1) * breathe);
+
+      // node shimmer
+      nodeMat.size = 0.34 + Math.sin(t * 2.1) * 0.02 + b * 0.1;
+
+      // signals along edges; burst-pool signals retire on arrival
       const sa = sigGeo.attributes.position;
-      for (let i = 0; i < SIG; i++) {
+      for (let i = 0; i < TOTAL_SIG; i++) {
         const sg = signals[i];
+        if (!sg.active) {
+          sa.array[i * 3] = 0; sa.array[i * 3 + 1] = 999; sa.array[i * 3 + 2] = 0; // parked offscreen
+          continue;
+        }
         sg.p += sg.speed * dt;
-        if (sg.p >= 1) { sg.p = 0; sg.e = pickEdge(); }
-        const [a, b] = edges[sg.e];
-        tmpA.copy(nodes[a]); tmpB.copy(nodes[b]);
+        if (sg.p >= 1) {
+          if (sg.burstPool && burst.t > 1.2) {
+            sg.active = false;
+            continue;
+          }
+          sg.p = 0;
+          sg.e = pickEdge();
+        }
+        const [a2, b2] = edges[sg.e];
+        tmpA.copy(nodes[a2]); tmpB.copy(nodes[b2]);
         tmpA.lerp(tmpB, sg.p);
         sa.array[i * 3] = tmpA.x; sa.array[i * 3 + 1] = tmpA.y; sa.array[i * 3 + 2] = tmpA.z;
       }
@@ -342,9 +507,10 @@ export default function BrainBackground() {
       group.rotation.z = -pointer.x * 0.06;
       camera.position.x = pointer.x * 0.9;
       camera.position.y = -pointer.y * 0.6;
+      camera.position.z = 15 + scrollT * 2.6;
       camera.lookAt(group.position.x * 0.55, group.position.y, 0);
 
-      renderer.render(scene, camera);
+      composer.render();
     };
 
     const animate = () => {
@@ -353,8 +519,11 @@ export default function BrainBackground() {
       renderFrame();
     };
 
-    if (reduceMotion) renderer.render(scene, camera);
-    else animate();
+    if (reduceMotion) {
+      renderFrame();
+    } else {
+      animate();
+    }
 
     const onVisibility = () => {
       if (document.hidden) {
@@ -362,7 +531,7 @@ export default function BrainBackground() {
         cancelAnimationFrame(frameId);
       } else if (!reduceMotion && !running) {
         running = true;
-        clock.start();
+        clock.getDelta();
         animate();
       }
     };
@@ -372,9 +541,12 @@ export default function BrainBackground() {
       running = false;
       cancelAnimationFrame(frameId);
       window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("scroll", onScroll);
       document.removeEventListener("visibilitychange", onVisibility);
       ro.disconnect();
       disposables.forEach((x) => x.dispose && x.dispose());
+      composer.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
     };

@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>smartRX — Never lose a prescription again</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blue:#1226ec;
+  --blue-deep:#0b18a8;
+  --amber:#ffb01f;
+  --cream:#f7ead2;
+  --ink:#0a0d2e;
+  --white:#ffffff;
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Archivo',sans-serif;
+  background:var(--blue);
+  color:var(--white);
+  overflow-x:hidden;
+}
+::selection{background:var(--amber);color:var(--ink)}
+
+/* ─── Preloader ─── */
+#loader{
+  position:fixed;inset:0;z-index:1000;background:var(--ink);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .8s var(--ease);
+}
+#loader.done{transform:translateY(-100%)}
+.loader-pill{
+  width:120px;height:48px;border-radius:24px;overflow:hidden;
+  display:flex;transform:rotate(-12deg);
+  animation:pillPulse 1s ease-in-out infinite alternate;
+}
+.loader-pill span{flex:1}
+.loader-pill span:first-child{background:var(--amber)}
+.loader-pill span:last-child{background:var(--white)}
+@keyframes pillPulse{from{transform:rotate(-12deg) scale(1)}to{transform:rotate(8deg) scale(1.08)}}
+
+/* ─── Nav ─── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:22px 48px;
+  transition:background .3s,padding .3s;
+}
+nav.scrolled{background:rgba(10,13,46,.85);backdrop-filter:blur(14px);padding:14px 48px}
+.logo{font-weight:900;font-size:1.5rem;letter-spacing:-.03em;text-decoration:none;color:var(--white);display:flex;align-items:center;gap:10px}
+.logo-mark{width:34px;height:34px;position:relative}
+.logo-mark::before{content:"";position:absolute;inset:0;background:var(--amber);border-radius:50% 50% 0 0}
+.logo-mark::after{content:"";position:absolute;left:0;right:0;bottom:0;height:50%;background:var(--white);border-radius:0 0 6px 6px}
+.nav-links{display:flex;gap:34px;align-items:center}
+.nav-links a{color:rgba(255,255,255,.8);text-decoration:none;font-weight:600;font-size:.95rem;position:relative;transition:color .2s}
+.nav-links a:not(.btn)::after{content:"";position:absolute;left:0;bottom:-6px;height:3px;width:0;background:var(--amber);border-radius:2px;transition:width .3s var(--ease)}
+.nav-links a:not(.btn):hover{color:var(--white)}
+.nav-links a:not(.btn):hover::after{width:100%}
+.btn{
+  background:var(--amber);color:var(--ink);padding:12px 26px;border-radius:40px;
+  font-weight:800;text-decoration:none;font-size:.95rem;border:none;cursor:pointer;
+  display:inline-block;transition:transform .25s var(--ease),box-shadow .25s;
+}
+.btn:hover{transform:translateY(-3px) rotate(-1.5deg);box-shadow:0 12px 30px rgba(0,0,0,.35)}
+.btn.ghost{background:transparent;color:var(--white);border:2.5px solid rgba(255,255,255,.5)}
+.btn.ghost:hover{border-color:var(--white)}
+
+/* ─── Hero ─── */
+.hero{
+  min-height:100vh;position:relative;display:flex;flex-direction:column;
+  justify-content:center;padding:140px 48px 80px;
+}
+.geo{position:absolute;pointer-events:none;will-change:transform}
+.geo-circle{border-radius:50%}
+.geo-half-up{border-radius:50% 50% 0 0 / 100% 100% 0 0}
+.geo-half-down{border-radius:0 0 50% 50% / 0 0 100% 100%}
+.geo-ring{border-radius:50%;background:transparent!important;border:3px solid rgba(255,255,255,.65)}
+.geo-dots{
+  background-image:radial-gradient(rgba(255,255,255,.5) 2.5px, transparent 2.5px);
+  background-size:18px 18px;border-radius:50%;
+}
+.geo.float{animation:geoFloat 7s ease-in-out infinite alternate}
+@keyframes geoFloat{from{transform:translateY(0) rotate(0)}to{transform:translateY(-26px) rotate(6deg)}}
+.geo.spin{animation:geoSpin 24s linear infinite}
+@keyframes geoSpin{to{transform:rotate(360deg)}}
+
+.hero-inner{position:relative;z-index:2;max-width:1100px}
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+  padding:8px 18px;border-radius:30px;font-size:.85rem;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;margin-bottom:28px;
+}
+.hero-eyebrow .dot{width:9px;height:9px;background:var(--amber);border-radius:50%;animation:blink 1.6s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+h1{
+  font-size:clamp(3rem,8.5vw,7.2rem);font-weight:900;line-height:.98;
+  letter-spacing:-.04em;margin-bottom:32px;
+}
+h1 .line{display:block;overflow:hidden}
+h1 .word{display:inline-block;transform:translateY(110%);animation:wordUp .9s var(--ease) forwards}
+h1 .accent{color:var(--amber);position:relative;font-style:italic}
+@keyframes wordUp{to{transform:translateY(0)}}
+.hero-sub{
+  font-family:'Space Grotesk';font-size:clamp(1.05rem,1.6vw,1.3rem);
+  max-width:560px;color:rgba(255,255,255,.85);line-height:1.6;margin-bottom:42px;
+  opacity:0;animation:fadeUp 1s var(--ease) .7s forwards;
+}
+.hero-ctas{display:flex;gap:18px;flex-wrap:wrap;opacity:0;animation:fadeUp 1s var(--ease) .9s forwards}
+.hero-ctas .btn{padding:17px 38px;font-size:1.05rem}
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.hero-stats{
+  display:flex;gap:56px;margin-top:72px;flex-wrap:wrap;
+  opacity:0;animation:fadeUp 1s var(--ease) 1.1s forwards;
+}
+.hstat .num{font-size:2.6rem;font-weight:900;letter-spacing:-.03em}
+.hstat .num em{color:var(--amber);font-style:normal}
+.hstat .lbl{font-family:'Space Grotesk';font-size:.9rem;color:rgba(255,255,255,.65);margin-top:4px}
+
+/* ─── Marquee ─── */
+.marquee{
+  background:var(--amber);color:var(--ink);padding:20px 0;overflow:hidden;
+  transform:rotate(-1.5deg) scale(1.02);position:relative;z-index:3;
+}
+.marquee-track{display:flex;gap:0;width:max-content;animation:marq 26s linear infinite}
+.marquee span{
+  font-weight:900;font-size:1.35rem;letter-spacing:.02em;text-transform:uppercase;
+  white-space:nowrap;padding:0 22px;display:flex;align-items:center;gap:22px;
+}
+.marquee .star{font-size:1.1rem}
+@keyframes marq{to{transform:translateX(-50%)}}
+
+/* ─── Sections base ─── */
+section{padding:120px 48px;position:relative}
+.section-tag{
+  font-family:'Space Grotesk';font-weight:700;font-size:.85rem;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--amber);margin-bottom:18px;display:block;
+}
+h2{font-size:clamp(2.2rem,4.5vw,3.8rem);font-weight:900;letter-spacing:-.03em;line-height:1.05;margin-bottom:22px}
+.reveal{opacity:0;transform:translateY(46px);transition:opacity .9s var(--ease),transform .9s var(--ease)}
+.reveal.in{opacity:1;transform:translateY(0)}
+
+/* ─── Features ─── */
+.features{background:var(--cream);color:var(--ink)}
+.features .section-tag{color:var(--blue)}
+.features-head{max-width:760px;margin-bottom:70px}
+.features-head p{font-family:'Space Grotesk';font-size:1.15rem;color:#5a5442;line-height:1.6}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:26px}
+.fcard{
+  background:var(--white);border-radius:28px;padding:38px 32px;
+  border:3px solid var(--ink);position:relative;overflow:hidden;
+  transition:transform .35s var(--ease),box-shadow .35s var(--ease);
+  cursor:default;
+}
+.fcard:hover{transform:translateY(-10px) rotate(-1deg);box-shadow:10px 12px 0 var(--ink)}
+.fcard .icon{
+  width:74px;height:74px;margin-bottom:26px;position:relative;
+  transition:transform .5s var(--ease);
+}
+.fcard:hover .icon{transform:rotate(180deg) scale(1.1)}
+.icon-scan{background:var(--blue);border-radius:50% 0 50% 50%}
+.icon-brain{background:var(--amber);border-radius:50% 50% 0 50%}
+.icon-alert{background:#e5484d;border-radius:0 50% 50% 50%}
+.icon-shield{background:#1a9d63;border-radius:50% 0 0 50%}
+.fcard h3{font-size:1.35rem;font-weight:800;margin-bottom:12px;letter-spacing:-.02em}
+.fcard p{font-family:'Space Grotesk';font-size:.98rem;color:#5a5442;line-height:1.55}
+.fcard .corner{
+  position:absolute;top:-26px;right:-26px;width:80px;height:80px;
+  background:var(--amber);border-radius:50%;opacity:0;transform:scale(.4);
+  transition:all .4s var(--ease);
+}
+.fcard:hover .corner{opacity:1;transform:scale(1)}
+
+/* ─── Scan demo ─── */
+.demo{background:var(--ink)}
+.demo-wrap{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;max-width:1200px;margin:0 auto}
+.demo-copy p{font-family:'Space Grotesk';font-size:1.1rem;color:rgba(255,255,255,.7);line-height:1.65;margin-bottom:34px}
+.rx-card{
+  background:#fffdf6;color:var(--ink);border-radius:22px;padding:34px;
+  position:relative;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5);
+  transform:rotate(1.5deg);transition:transform .4s var(--ease);
+}
+.rx-card:hover{transform:rotate(0)}
+.rx-head{display:flex;justify-content:space-between;align-items:center;border-bottom:2px dashed #d8d2c0;padding-bottom:16px;margin-bottom:20px}
+.rx-head .rx-symbol{font-size:2rem;font-weight:900;color:var(--blue)}
+.rx-head .clinic{font-family:'Space Grotesk';font-size:.8rem;color:#8a8470;text-align:right;line-height:1.4}
+.rx-field{margin-bottom:14px}
+.rx-field .flabel{font-family:'Space Grotesk';font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:#a09a86;margin-bottom:3px}
+.rx-field .fval{font-weight:700;font-size:1.02rem;min-height:1.4em}
+.rx-field .fval .cursor-blink{display:inline-block;width:2px;height:1em;background:var(--blue);vertical-align:middle;animation:blink .7s infinite}
+.med-row{
+  display:flex;justify-content:space-between;background:#f2ecdc;border-radius:12px;
+  padding:10px 16px;margin-bottom:8px;font-size:.92rem;font-weight:600;
+  opacity:0;transform:translateX(-16px);transition:all .5s var(--ease);
+}
+.med-row.show{opacity:1;transform:translateX(0)}
+.med-row .dose{color:var(--blue);font-family:'Space Grotesk';font-weight:700}
+.scanline{
+  position:absolute;left:0;right:0;top:0;height:4px;
+  background:linear-gradient(90deg,transparent,var(--amber),transparent);
+  box-shadow:0 0 24px 6px rgba(255,176,31,.55);
+  opacity:0;pointer-events:none;
+}
+.rx-card.scanning .scanline{opacity:1;animation:scanMove 1.8s ease-in-out}
+@keyframes scanMove{0%{top:0}100%{top:100%}}
+.confidence{
+  display:inline-flex;align-items:center;gap:10px;margin-top:18px;
+  background:var(--blue);color:#fff;padding:8px 18px;border-radius:30px;
+  font-family:'Space Grotesk';font-weight:700;font-size:.85rem;
+  opacity:0;transform:scale(.7);transition:all .5s var(--ease);
+}
+.confidence.show{opacity:1;transform:scale(1)}
+#scanBtn{margin-top:6px}
+#scanBtn:disabled{opacity:.5;cursor:wait;transform:none}
+
+/* ─── Doctor panel ─── */
+.doctor{background:var(--blue)}
+.doc-wrap{display:grid;grid-template-columns:1fr 1.1fr;gap:80px;align-items:center;max-width:1200px;margin:0 auto}
+.doc-mock{
+  background:var(--white);color:var(--ink);border-radius:26px;padding:30px;
+  box-shadow:0 30px 80px rgba(0,0,0,.4);transform:rotate(-1.5deg);
+  transition:transform .4s var(--ease);
+}
+.doc-mock:hover{transform:rotate(0) scale(1.02)}
+.doc-mock-head{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+.avatar{width:52px;height:52px;border-radius:50%;background:var(--amber);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.2rem}
+.doc-mock-head .pname{font-weight:800;font-size:1.1rem}
+.doc-mock-head .pphone{font-family:'Space Grotesk';font-size:.82rem;color:#8a8470}
+.trend-badge{
+  margin-left:auto;background:#e6f7ee;color:#1a9d63;font-family:'Space Grotesk';
+  font-weight:700;font-size:.78rem;padding:6px 14px;border-radius:20px;
+}
+.sum-block{background:#f6f2e7;border-radius:16px;padding:16px 20px;margin-bottom:12px}
+.sum-block .sb-label{font-family:'Space Grotesk';font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:#a09a86;margin-bottom:8px}
+.pill-tag{
+  display:inline-block;background:var(--white);border:2px solid var(--ink);
+  border-radius:20px;padding:4px 14px;font-size:.85rem;font-weight:700;margin:3px 4px 3px 0;
+  transition:all .25s;cursor:default;
+}
+.pill-tag:hover{background:var(--amber);transform:translateY(-2px)}
+.ix-alert{
+  background:#fdeaea;border:2px solid #e5484d;border-radius:16px;padding:14px 18px;
+  display:flex;gap:12px;align-items:flex-start;animation:pulseBorder 2s infinite;
+}
+@keyframes pulseBorder{0%,100%{box-shadow:0 0 0 0 rgba(229,72,77,.35)}50%{box-shadow:0 0 0 8px rgba(229,72,77,0)}}
+.ix-alert .warn{font-size:1.3rem}
+.ix-alert .ix-title{font-weight:800;font-size:.92rem;color:#c0262c}
+.ix-alert p{font-family:'Space Grotesk';font-size:.84rem;color:#7a3b3d;margin-top:2px}
+.doc-copy .checklist{list-style:none;margin-top:30px}
+.doc-copy .checklist li{
+  font-family:'Space Grotesk';font-size:1.05rem;padding:10px 0 10px 44px;position:relative;
+  color:rgba(255,255,255,.9);
+}
+.doc-copy .checklist li::before{
+  content:"";position:absolute;left:0;top:8px;width:28px;height:28px;
+  background:var(--amber);border-radius:50%;
+}
+.doc-copy .checklist li::after{
+  content:"";position:absolute;left:8px;top:15px;width:12px;height:7px;
+  border-left:3px solid var(--ink);border-bottom:3px solid var(--ink);transform:rotate(-45deg);
+}
+
+/* ─── Steps ─── */
+.steps{background:var(--cream);color:var(--ink)}
+.steps .section-tag{color:var(--blue)}
+.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:30px;margin-top:64px}
+.step{
+  position:relative;padding:44px 34px;border-radius:28px;background:var(--white);
+  border:3px solid var(--ink);overflow:hidden;transition:all .35s var(--ease);
+}
+.step:hover{background:var(--blue);color:#fff;transform:translateY(-8px)}
+.step:hover p{color:rgba(255,255,255,.8)}
+.step .num{
+  font-size:5rem;font-weight:900;color:var(--amber);line-height:1;
+  -webkit-text-stroke:2.5px var(--ink);margin-bottom:20px;display:block;
+}
+.step:hover .num{-webkit-text-stroke:2.5px #fff}
+.step h3{font-size:1.4rem;font-weight:800;margin-bottom:12px}
+.step p{font-family:'Space Grotesk';color:#5a5442;line-height:1.55;transition:color .3s}
+
+/* ─── Big CTA ─── */
+.bigcta{background:var(--ink);text-align:center;overflow:hidden}
+.bigcta h2{font-size:clamp(2.6rem,7vw,6rem);margin-bottom:34px}
+.bigcta h2 .accent{color:var(--amber)}
+.bigcta .btn{padding:20px 52px;font-size:1.15rem}
+.bigcta .geo{opacity:.5}
+
+/* ─── Footer ─── */
+footer{
+  background:var(--ink);border-top:1px solid rgba(255,255,255,.12);
+  padding:38px 48px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;
+}
+footer p{font-family:'Space Grotesk';font-size:.88rem;color:rgba(255,255,255,.5)}
+footer .flinks{display:flex;gap:26px}
+footer .flinks a{color:rgba(255,255,255,.6);text-decoration:none;font-family:'Space Grotesk';font-size:.88rem;transition:color .2s}
+footer .flinks a:hover{color:var(--amber)}
+
+@media(max-width:900px){
+  nav{padding:16px 24px}
+  .nav-links a:not(.btn){display:none}
+  section{padding:80px 24px}
+  .hero{padding:120px 24px 60px}
+  .demo-wrap,.doc-wrap{grid-template-columns:1fr;gap:44px}
+  .steps-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div id="loader"><div class="loader-pill"><span></span><span></span></div></div>
+
+<nav id="nav">
+  <a class="logo" href="#"><span class="logo-mark"></span>smartRX</a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#demo">See it work</a>
+    <a href="#doctors">For doctors</a>
+    <a href="#how">How it works</a>
+    <a href="#" class="btn">Get started free</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <!-- geometric field -->
+  <div class="geo geo-circle float" data-depth="30" style="width:210px;height:210px;background:var(--amber);top:12%;right:8%"></div>
+  <div class="geo geo-ring spin" data-depth="18" style="width:300px;height:300px;top:6%;right:20%"></div>
+  <div class="geo geo-half-up float" data-depth="42" style="width:150px;height:75px;background:var(--cream);bottom:16%;right:14%;animation-delay:.8s"></div>
+  <div class="geo geo-dots float" data-depth="24" style="width:230px;height:230px;bottom:8%;left:-40px;animation-delay:.4s"></div>
+  <div class="geo geo-half-down float" data-depth="36" style="width:120px;height:60px;background:var(--amber);top:22%;left:4%;animation-delay:1.2s"></div>
+  <div class="geo geo-circle float" data-depth="50" style="width:60px;height:60px;background:var(--cream);top:48%;right:32%;animation-delay:.6s"></div>
+  <div class="geo geo-ring float" data-depth="14" style="width:110px;height:110px;bottom:30%;right:4%;animation-delay:1s"></div>
+
+  <div class="hero-inner">
+    <span class="hero-eyebrow"><span class="dot"></span>AI-powered prescription memory</span>
+    <h1>
+      <span class="line"><span class="word" style="animation-delay:.1s">Every&nbsp;</span><span class="word" style="animation-delay:.2s">script.</span></span>
+      <span class="line"><span class="word" style="animation-delay:.32s">Every&nbsp;</span><span class="word" style="animation-delay:.42s">dose.</span></span>
+      <span class="line"><span class="word accent" style="animation-delay:.56s">Remembered.</span></span>
+    </h1>
+    <p class="hero-sub">Snap a photo of any prescription — handwritten or printed. smartRX reads it, files it, checks it for dangerous drug interactions, and hands your doctor a clean clinical summary in seconds.</p>
+    <div class="hero-ctas">
+      <a href="#" class="btn">Start tracking — it's free</a>
+      <a href="#demo" class="btn ghost">Watch it read a script ↓</a>
+    </div>
+    <div class="hero-stats">
+      <div class="hstat"><div class="num"><span class="count" data-target="98">0</span><em>%</em></div><div class="lbl">extraction accuracy</div></div>
+      <div class="hstat"><div class="num">&lt;<span class="count" data-target="9">0</span><em>s</em></div><div class="lbl">photo to filed record</div></div>
+      <div class="hstat"><div class="num"><span class="count" data-target="2">0</span><em>×</em></div><div class="lbl">AI engines, zero typing</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="marquee">
+  <div class="marquee-track" id="marqueeTrack">
+    <span>AI extraction <i class="star">✦</i> Drug interaction alerts <i class="star">✦</i> Doctor summaries <i class="star">✦</i> Full audit trail <i class="star">✦</i> Dose reminders <i class="star">✦</i>&nbsp;</span>
+  </div>
+</div>
+
+<section class="features" id="features">
+  <div class="features-head reveal">
+    <span class="section-tag">Why smartRX</span>
+    <h2>Your medical history shouldn't live in a shoebox.</h2>
+    <p>Paper prescriptions get lost, faded, and forgotten. smartRX turns each one into structured, searchable, doctor-ready data — the moment you photograph it.</p>
+  </div>
+  <div class="fgrid">
+    <div class="fcard reveal" style="transition-delay:.05s">
+      <div class="corner"></div>
+      <div class="icon icon-scan"></div>
+      <h3>Reads any prescription</h3>
+      <p>Vision AI plus OCR decodes printed and handwritten scripts — medicine names, doses, frequency, duration — even the scrawly ones.</p>
+    </div>
+    <div class="fcard reveal" style="transition-delay:.15s">
+      <div class="corner"></div>
+      <div class="icon icon-brain"></div>
+      <h3>Thinks like a clinician</h3>
+      <p>Builds a live clinical summary: current medicines, inferred conditions, allergies, and health trend across your whole history.</p>
+    </div>
+    <div class="fcard reveal" style="transition-delay:.25s">
+      <div class="corner"></div>
+      <div class="icon icon-alert"></div>
+      <h3>Flags dangerous mixes</h3>
+      <p>Cross-checks every medicine you take against every other. Severe, moderate, or mild — interactions are flagged before harm happens.</p>
+    </div>
+    <div class="fcard reveal" style="transition-delay:.35s">
+      <div class="corner"></div>
+      <div class="icon icon-shield"></div>
+      <h3>You see who looked</h3>
+      <p>Every doctor access to your records is logged and visible to you. Your data, your audit trail, always.</p>
+    </div>
+  </div>
+</section>
+
+<section class="demo" id="demo">
+  <div class="demo-wrap">
+    <div class="demo-copy reveal">
+      <span class="section-tag">Live demo</span>
+      <h2>Watch it read a real script.</h2>
+      <p>No forms. No typing medicine names. Point, shoot, verify. Hit the scan button and watch smartRX pull structure out of paper.</p>
+      <button class="btn" id="scanBtn">▶ Scan prescription</button>
+    </div>
+    <div class="rx-card reveal" id="rxCard" style="transition-delay:.15s">
+      <div class="scanline"></div>
+      <div class="rx-head">
+        <span class="rx-symbol">℞</span>
+        <div class="clinic">City Care Clinic<br>Reg. No. 48-2210</div>
+      </div>
+      <div class="rx-field"><div class="flabel">Doctor</div><div class="fval" id="fDoctor">—</div></div>
+      <div class="rx-field"><div class="flabel">Hospital</div><div class="fval" id="fHospital">—</div></div>
+      <div class="rx-field"><div class="flabel">Date</div><div class="fval" id="fDate">—</div></div>
+      <div class="rx-field">
+        <div class="flabel">Medicines</div>
+        <div id="medList">
+          <div class="med-row"><span>Metformin 500mg</span><span class="dose">1-0-1 · 30 days</span></div>
+          <div class="med-row"><span>Atorvastatin 10mg</span><span class="dose">0-0-1 · 30 days</span></div>
+          <div class="med-row"><span>Aspirin 75mg</span><span class="dose">1-0-0 · after food</span></div>
+        </div>
+      </div>
+      <div class="confidence" id="confBadge">✓ Extracted · 96% confidence</div>
+    </div>
+  </div>
+</section>
+
+<section class="doctor" id="doctors">
+  <div class="doc-wrap">
+    <div class="doc-mock reveal">
+      <div class="doc-mock-head">
+        <div class="avatar">AR</div>
+        <div>
+          <div class="pname">Anita Rao</div>
+          <div class="pphone">+91 98••• ••210</div>
+        </div>
+        <span class="trend-badge">↗ improving</span>
+      </div>
+      <div class="sum-block">
+        <div class="sb-label">Current medicines</div>
+        <span class="pill-tag">Metformin 500mg</span>
+        <span class="pill-tag">Atorvastatin 10mg</span>
+        <span class="pill-tag">Aspirin 75mg</span>
+        <span class="pill-tag">Telmisartan 40mg</span>
+      </div>
+      <div class="sum-block">
+        <div class="sb-label">Inferred conditions</div>
+        <span class="pill-tag">Type 2 Diabetes · stable</span>
+        <span class="pill-tag">Hypertension · improving</span>
+      </div>
+      <div class="ix-alert">
+        <span class="warn">⚠</span>
+        <div>
+          <div class="ix-title">Moderate interaction — Aspirin + Telmisartan</div>
+          <p>Concurrent use may reduce antihypertensive effect and stress renal function. Monitor BP.</p>
+        </div>
+      </div>
+    </div>
+    <div class="doc-copy reveal" style="transition-delay:.15s">
+      <span class="section-tag" style="color:var(--amber)">For doctors</span>
+      <h2>A full patient picture from one phone number.</h2>
+      <ul class="checklist">
+        <li>Look up any patient by phone — full prescription history, instantly</li>
+        <li>AI clinical summary: medicines, conditions, allergies, trend</li>
+        <li>Drug interaction warnings surfaced before you prescribe</li>
+        <li>Add consultation notes that travel with the patient</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="steps" id="how">
+  <div class="reveal">
+    <span class="section-tag">How it works</span>
+    <h2>Three steps. Zero paperwork.</h2>
+  </div>
+  <div class="steps-grid">
+    <div class="step reveal" style="transition-delay:.05s">
+      <span class="num">01</span>
+      <h3>Snap</h3>
+      <p>Photograph any prescription with your phone. Crumpled, faded, handwritten — all fine.</p>
+    </div>
+    <div class="step reveal" style="transition-delay:.18s">
+      <span class="num">02</span>
+      <h3>Verify</h3>
+      <p>AI extracts everything in seconds. You glance, fix anything off, and confirm. You're always in control.</p>
+    </div>
+    <div class="step reveal" style="transition-delay:.3s">
+      <span class="num">03</span>
+      <h3>Share</h3>
+      <p>Any doctor you authorize sees a clean clinical summary — with interaction alerts — not a pile of paper.</p>
+    </div>
+  </div>
+</section>
+
+<section class="bigcta">
+  <div class="geo geo-circle float" style="width:180px;height:180px;background:var(--blue);top:10%;left:6%"></div>
+  <div class="geo geo-ring spin" style="width:260px;height:260px;bottom:8%;right:8%"></div>
+  <div class="geo geo-half-up float" style="width:130px;height:65px;background:var(--amber);bottom:20%;left:16%;animation-delay:.7s"></div>
+  <div class="reveal">
+    <h2>Stop losing<br>your <span class="accent">health history.</span></h2>
+    <a href="#" class="btn">Create free account</a>
+  </div>
+</section>
+
+<footer>
+  <a class="logo" href="#" style="font-size:1.2rem"><span class="logo-mark" style="width:26px;height:26px"></span>smartRX</a>
+  <p>Made for patients and the doctors who care for them.</p>
+  <div class="flinks">
+    <a href="#">Privacy</a><a href="#">Security</a><a href="#">Contact</a>
+  </div>
+</footer>
+
+<script>
+// preloader
+window.addEventListener('load',()=>setTimeout(()=>document.getElementById('loader').classList.add('done'),500));
+
+// nav scroll state
+const nav=document.getElementById('nav');
+addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>40),{passive:true});
+
+// duplicate marquee for seamless loop
+const track=document.getElementById('marqueeTrack');
+track.innerHTML+=track.innerHTML;
+
+// mouse parallax on hero geometry
+const geos=document.querySelectorAll('.hero .geo');
+document.querySelector('.hero').addEventListener('mousemove',e=>{
+  const cx=innerWidth/2, cy=innerHeight/2;
+  geos.forEach(g=>{
+    const d=+g.dataset.depth||20;
+    g.style.translate=`${(e.clientX-cx)/d}px ${(e.clientY-cy)/d}px`;
+  });
+});
+
+// scroll reveals
+const io=new IntersectionObserver(es=>es.forEach(e=>{
+  if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}
+}),{threshold:.18});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+// counters
+const cio=new IntersectionObserver(es=>es.forEach(e=>{
+  if(!e.isIntersecting)return;cio.unobserve(e.target);
+  const el=e.target,t=+el.dataset.target,dur=1400,t0=performance.now();
+  (function tick(now){
+    const p=Math.min((now-t0)/dur,1);
+    el.textContent=Math.round(t*(1-Math.pow(1-p,3)));
+    if(p<1)requestAnimationFrame(tick);
+  })(t0);
+}),{threshold:.6});
+document.querySelectorAll('.count').forEach(el=>cio.observe(el));
+
+// scan demo — typewriter extraction
+const scanBtn=document.getElementById('scanBtn');
+const rxCard=document.getElementById('rxCard');
+const fields=[
+  ['fDoctor','Dr. S. Mehta, MD'],
+  ['fHospital','City Care Clinic, Hyderabad'],
+  ['fDate','28 Jun 2026'],
+];
+function typeInto(id,text){
+  return new Promise(res=>{
+    const el=document.getElementById(id);
+    el.innerHTML='<span class="cursor-blink"></span>';
+    let i=0;
+    const iv=setInterval(()=>{
+      i++;
+      el.innerHTML=text.slice(0,i)+'<span class="cursor-blink"></span>';
+      if(i>=text.length){clearInterval(iv);el.textContent=text;res();}
+    },28);
+  });
+}
+scanBtn.addEventListener('click',async()=>{
+  scanBtn.disabled=true;
+  // reset
+  fields.forEach(([id])=>document.getElementById(id).textContent='—');
+  document.querySelectorAll('.med-row').forEach(r=>r.classList.remove('show'));
+  document.getElementById('confBadge').classList.remove('show');
+  rxCard.classList.remove('scanning');
+  void rxCard.offsetWidth; // restart animation
+  rxCard.classList.add('scanning');
+  await new Promise(r=>setTimeout(r,1400));
+  for(const [id,text] of fields) await typeInto(id,text);
+  const rows=document.querySelectorAll('.med-row');
+  for(const r of rows){r.classList.add('show');await new Promise(x=>setTimeout(x,220));}
+  document.getElementById('confBadge').classList.add('show');
+  scanBtn.disabled=false;
+  scanBtn.textContent='↻ Scan again';
+});
+</script>
+</body>
+</html>

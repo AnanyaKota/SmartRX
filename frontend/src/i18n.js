@@ -7,6 +7,7 @@ const translations = {
   en: {
     // Nav
     navUpload: "Prescription Upload",
+    navBody: "Body Map",
     navHistory: "Medical History",
     navNotifications: "Notifications & Alerts",
     navAudit: "Access Log",
@@ -23,6 +24,10 @@ const translations = {
     uploadTip1: "Good lighting — no shadows across the text",
     uploadTip2: "Hold camera steady; blurry images reduce accuracy",
     uploadTip3: "Capture full prescription including doctor name & date",
+
+    // Body map
+    bodyTitle: "Body Map",
+    bodySubtitle: "Your prescriptions mapped onto your body — see what's being treated, and where.",
 
     // Verify modal
     verifyTitle: "Review Extracted Data",
@@ -94,6 +99,7 @@ const translations = {
   hi: {
     // Nav
     navUpload: "पर्चा अपलोड",
+    navBody: "शरीर मानचित्र",
     navHistory: "चिकित्सा इतिहास",
     navNotifications: "सूचनाएं और अलर्ट",
     navAudit: "एक्सेस लॉग",
@@ -110,6 +116,10 @@ const translations = {
     uploadTip1: "अच्छी रोशनी — पाठ पर कोई छाया नहीं",
     uploadTip2: "कैमरा स्थिर रखें; धुंधली तस्वीरें सटीकता कम करती हैं",
     uploadTip3: "डॉक्टर का नाम और तारीख सहित पूरा पर्चा कैप्चर करें",
+
+    // Body map
+    bodyTitle: "शरीर मानचित्र",
+    bodySubtitle: "आपके पर्चे शरीर पर मैप किए गए — देखें कहां क्या इलाज चल रहा है।",
 
     // Verify modal
     verifyTitle: "निकाला गया डेटा जांचें",

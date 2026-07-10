@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { api, setSession, getUser } from "../api.js";
 
 // Code-split the 3D backdrop: the form paints instantly, three.js streams in.
-const ThreeBackground = lazy(() => import("../components/ThreeBackground.jsx"));
+// Swap back to ThreeBackground.jsx to restore the light glossy-helix look.
+const ThreeBackground = lazy(() => import("../components/DnaParticles.jsx"));
 
 const EMPTY = { phone: "", password: "", name: "", role: "patient", hospital_name: "", specialization: "" };
 
@@ -136,7 +137,7 @@ export default function LoginPage() {
   const isRegister = mode === "register";
 
   return (
-    <div className="auth-screen">
+    <div className="auth-screen auth-dark">
       <Suspense fallback={null}>
         <ThreeBackground />
       </Suspense>

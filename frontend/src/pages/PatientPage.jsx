@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { api, getUser } from "../api.js";
 import { t, getLang, setLang } from "../i18n.js";
+import NavGlyph from "../components/NavGlyph.jsx";
+import BodyMap from "../components/BodyMap.jsx";
+import { analyzeHealth } from "../lib/medicalMapping.js";
 
 // ── Frequency parser ─────────────────────────────────────────────────────────
 function parseFrequency(frequency) {
@@ -103,11 +106,12 @@ export default function PatientPage() {
   const [settings, setSettings] = useState(null);
 
   const navItems = [
-    { id: "upload",        label: t("navUpload"),        icon: "📋" },
-    { id: "history",       label: t("navHistory"),       icon: "🏥" },
-    { id: "notifications", label: t("navNotifications"), icon: "🔔" },
-    { id: "audit",         label: t("navAudit"),         icon: "🔐" },
-    { id: "settings",      label: t("navSettings"),      icon: "⚙️" },
+    { id: "upload",        label: t("navUpload"),        icon: "scan" },
+    { id: "body",          label: t("navBody"),          icon: "body" },
+    { id: "history",       label: t("navHistory"),       icon: "history" },
+    { id: "notifications", label: t("navNotifications"), icon: "bell" },
+    { id: "audit",         label: t("navAudit"),         icon: "shield" },
+    { id: "settings",      label: t("navSettings"),      icon: "sliders" },
   ];
 
   async function loadLog() {
@@ -249,7 +253,7 @@ export default function PatientPage() {
               className={`nav-item${active === item.id ? " active" : ""}`}
               onClick={() => setActive(item.id)}
             >
-              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-icon"><NavGlyph name={item.icon} /></span>
               <span className="nav-label">{item.label}</span>
               {item.id === "notifications" && urgentCount > 0 && (
                 <span className="nav-badge">{urgentCount}</span>
@@ -277,6 +281,13 @@ export default function PatientPage() {
             file={file} setFile={setFile} uploading={uploading}
             uploadErr={uploadErr} dragging={dragging}
             setDragging={setDragging} onSubmit={upload}
+          />
+        )}
+        {active === "body" && (
+          <BodyPanel
+            prescriptions={log?.prescriptions ?? []}
+            interactionReport={interactionReport}
+            loading={loading}
           />
         )}
         {active === "history" && (
@@ -405,6 +416,32 @@ function ExtractionVerifyModal({ result, onConfirm, onDiscard }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Body Map Panel ────────────────────────────────────────────────────────────
+function BodyPanel({ prescriptions, interactionReport, loading }) {
+  const { findings, meta } = useMemo(
+    () => analyzeHealth({ prescriptions, interactions: interactionReport?.interactions || [] }),
+    [prescriptions, interactionReport]
+  );
+
+  return (
+    <div className="dash-panel dash-panel-wide">
+      <div className="dash-header">
+        <h1 className="dash-title">{t("bodyTitle")}</h1>
+        <p className="dash-subtitle">{t("bodySubtitle")}</p>
+      </div>
+      {loading ? (
+        <p className="muted">Loading…</p>
+      ) : (
+        <BodyMap
+          findings={findings}
+          meta={meta}
+          subtitle={`${prescriptions.length} prescription${prescriptions.length !== 1 ? "s" : ""} analysed`}
+        />
+      )}
     </div>
   );
 }
