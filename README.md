@@ -1,4 +1,4 @@
-# smartRX
+# SmartRx
 
 AI-powered prescription management + patient health tracking.
 
